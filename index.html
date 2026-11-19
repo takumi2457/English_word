@@ -100,6 +100,14 @@ td{padding:6px 4px;border-bottom:1px solid var(--bd)}td.n{color:var(--mu);width:
    <p class="mu" style="margin:8px 0 0">新しく始めるときは、①Excelの単語帳を読み込む → ②この記録を読み込む の順に行います。</p></div>
  </div>
  <div class="box">
+  <label>🔔 効果音（「○ 覚えた」「✗ まだ」を押したとき。この端末だけに保存されます）</label>
+  <select id="fx"><option value="none">なし</option><option value="soft">やさしい（ベル／低いポン）</option><option value="quiz">クイズ風（ピンポン／ブブー）</option><option value="game">ゲーム風（コイン／ダウン）</option><option value="tick">控えめ（カチッ／コトッ）</option><option value="custom">自分の音源（sounds フォルダの ok／ng ファイル）</option></select>
+  <label style="margin-top:10px">音量：<span id="fxv"></span></label>
+  <input type="range" id="fxr" min="0.1" max="1" step="0.05" style="width:100%">
+  <div class="row" style="margin-top:10px"><button id="fxo" class="ok">○ の音を聞く</button><button id="fxn" class="ng">✗ の音を聞く</button></div>
+  <p class="mu" id="fxm" style="margin:8px 0 0">好きな効果音を使うには、GitHubのリポジトリに sounds フォルダを作り、「覚えた」用を ok.mp3、「まだ」用を ng.mp3 という名前で入れて、上で「自分の音源」を選びます（wav・ogg・m4a も可）。</p>
+ </div>
+ <div class="box">
   <label>🔊 発音の設定（この端末だけに保存されます）</label>
   <select id="vs"></select>
   <p class="mu" id="vcnt" style="margin:6px 0 0"></p>
@@ -149,7 +157,7 @@ $("bk").onchange=()=>{cur=+$("bk").value;save();all()};
 function show(t){$("p1").classList.toggle("hide",t!=1);$("p2").classList.toggle("hide",t!=2);$("t1").classList.toggle("on",t==1);$("t2").classList.toggle("on",t==2);all()}
 $("t1").onclick=()=>show(1);$("t2").onclick=()=>show(2);
 
-function begin(idx){if(!idx.length){$("total").textContent="出題できる単語がありません。範囲や条件を変えてください。";return}
+function begin(idx){preSp=null;if(!idx.length){$("total").textContent="出題できる単語がありません。範囲や条件を変えてください。";return}
  Q=idx.slice();pos=0;missed=[];$("setup").classList.add("hide");$("result").classList.add("hide");$("quiz").classList.remove("hide");draw()}
 $("start").onclick=()=>{const w=pool();const a=Math.max(1,+$("from").value||1),b=Math.min(w.length,+$("to").value||w.length);rev=$("rev").checked;
  let idx=[];for(let i=a-1;i<b;i++)if(!$("only").checked||!w[i].w.k)idx.push(w[i]);
@@ -166,7 +174,7 @@ cd.addEventListener("pointerdown",e=>{drag=true;moved=false;sx=e.clientX;sy=e.cl
 cd.addEventListener("pointermove",e=>{if(!drag)return;dx=e.clientX-sx;dy=e.clientY-sy;if(Math.abs(dx)>8||Math.abs(dy)>8)moved=true;cd.style.transform="translateX("+dx+"px) rotate("+dx/20+"deg)";cd.style.borderColor=dx>30?"var(--ok)":dx<-30?"var(--ng)":""});
 function endDrag(e){if(!drag)return;drag=false;if(e&&e.type=="pointerup"){dx=e.clientX-sx;dy=e.clientY-sy}const fl=Math.hypot(dx,dy)/Math.max(1,Date.now()-t0)>.35;if(dx>60||(fl&&dx>25))fly(1);else if(dx<-60||(fl&&dx<-25))fly(-1);else{cd.classList.remove("drag");cd.style.transform="";cd.style.borderColor="";if(!moved)flip()}}
 cd.addEventListener("pointerup",endDrag);cd.addEventListener("pointercancel",endDrag);
-let busy=false;function fly(d,dn){if(busy)return;if(!seen){cd.classList.remove("drag");cd.style.transform="";cd.style.borderColor="";nudge();return}busy=true;cd.classList.remove("drag");cd.style.borderColor=d>0?"var(--ok)":"var(--ng)";cd.style.transform=dn?"translateY(520px)":"translateX("+d*500+"px) rotate("+d*25+"deg)";setTimeout(()=>{cd.classList.add("drag");busy=false;answer(d>0)},180)}
+let busy=false;function fly(d,dn){if(busy)return;if(!seen){cd.classList.remove("drag");cd.style.transform="";cd.style.borderColor="";nudge();return}busy=true;sfx(d>0);preSpeak();cd.classList.remove("drag");cd.style.borderColor=d>0?"var(--ok)":"var(--ng)";cd.style.transform=dn?"translateY(520px)":"translateX("+d*500+"px) rotate("+d*25+"deg)";setTimeout(()=>{cd.classList.add("drag");busy=false;answer(d>0)},120)}
 function answer(ok){if($("quiz").classList.contains("hide"))return;const x=Q[pos];x.w.k=ok;dirty++;if(!ok)missed.push(x);save();banner();pos++;
  if(pos>=Q.length){$("quiz").classList.add("hide");$("result").classList.remove("hide");$("rtxt").textContent=Q.length+"問中 "+(Q.length-missed.length)+"問「覚えた」";$("again").classList.toggle("hide",!missed.length)}else draw()}
 $("bOk").onclick=()=>fly(1);$("bNg").onclick=()=>fly(-1);
@@ -272,10 +280,43 @@ const saveVS=()=>{try{localStorage.setItem(VK,JSON.stringify(VS))}catch(e){}};
 const ipaT=t=>t?(/^[\/\[]/.test(t)?t:"/"+t+"/"):"";
 const enVoices=()=>{try{return speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang))}catch(e){return[]}};
 function vScore(v){let c=0;const n=v.name,l=v.lang.replace("_","-");if(/^en-US$/i.test(l))c+=50;else if(/^en-(GB|AU|CA|IE)/i.test(l))c+=20;if(/premium|enhanced|natural|neural/i.test(n))c+=40;if(/Google US English|Samantha|Ava|Allison|Zoe|Evan|Nicky|Aaron/i.test(n))c+=30;if(/compact/i.test(n))c-=10;if(/Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Deranged|Good News|Hysterical|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Fred|Junior|Ralph|Kathy/i.test(n))c-=100;return c}
-function pickVoice(){const l=enVoices();if(VS.name){const f=l.find(v=>v.name==VS.name);if(f)return f}return l.slice().sort((a,b)=>vScore(b)-vScore(a))[0]}
+let vCache=null,vCacheKey="";
+function pickVoice(){const k=VS.name+"|"+vSig;if(vCache&&vCacheKey===k)return vCache;const l=enVoices();let v=null;if(VS.name)v=l.find(x=>x.name==VS.name)||null;if(!v)v=l.slice().sort((x,y)=>vScore(y)-vScore(x))[0]||null;if(v){vCache=v;vCacheKey=k}return v}
 function sp(w){try{const s=window.speechSynthesis;if(!s)return;let t=typeof w=="object"?(w.r||w.f):w;
  t=String(t).replace(/[~～〜]/g," ").replace(/\bsb\b/gi,"somebody").replace(/\bsth\b/gi,"something").replace(/\s*\/\s*/g,", ").replace(/\s+/g," ").trim();if(!t)return;
- s.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=+VS.rate||1;const v=pickVoice();if(v){u.voice=v;u.lang=v.lang}s.speak(u)}catch(e){}}
+ if(s.speaking||s.pending)s.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=+VS.rate||1;const v=pickVoice();if(v){u.voice=v;u.lang=v.lang}s.speak(u)}catch(e){}}
+const FK="tangocho:sfx";let FX={style:"soft",vol:.5};try{Object.assign(FX,JSON.parse(localStorage.getItem(FK)||"{}"))}catch(e){}
+const saveFX=()=>{try{localStorage.setItem(FK,JSON.stringify(FX))}catch(e){}};
+let AC=null,MO=null;const CB={ok:null,ng:null,tried:false};
+function acInit(){if(AC)return;AC=new(window.AudioContext||window.webkitAudioContext)();MO=AC.createGain();
+ const cv=AC.createConvolver(),n=Math.floor(AC.sampleRate*1.1),buf=AC.createBuffer(2,n,AC.sampleRate);
+ for(let c=0;c<2;c++){const d=buf.getChannelData(c);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,3)}
+ cv.buffer=buf;const wet=AC.createGain();wet.gain.value=.2;MO.connect(AC.destination);MO.connect(cv);cv.connect(wet);wet.connect(AC.destination)}
+async function loadCustom(){if(CB.tried)return;CB.tried=true;try{acInit()}catch(e){return}
+ for(const k of["ok","ng"])for(const ext of["mp3","wav","ogg","m4a"]){try{const r=await fetch("sounds/"+k+"."+ext);if(!r.ok)continue;CB[k]=await AC.decodeAudioData(await r.arrayBuffer());break}catch(e){}}
+ const m=$("fxm");if(FX.style=="custom"&&!(CB.ok&&CB.ng)){m.style.color="var(--ng)";m.textContent="sounds フォルダに ok と ng の音源が見つかりません（見つからない音は「やさしい」で代用します）。ファイル名と場所を確認してください。"}}
+function sfx(ok){if(FX.style=="none")return;try{acInit();if(AC.state=="suspended")AC.resume();
+ const t0=AC.currentTime+.01,V=+FX.vol||.5,S=FX.style;
+ const tone=(f,st,dur,type,vol,lp)=>{const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t0+st);
+  g.gain.setValueAtTime(.0001,t0+st);g.gain.exponentialRampToValueAtTime(Math.max(.0002,vol*V*.5),t0+st+.012);g.gain.exponentialRampToValueAtTime(.0001,t0+st+dur);
+  let out=g;if(lp){const q=AC.createBiquadFilter();q.type="lowpass";q.frequency.value=lp;g.connect(q);out=q}
+  o.connect(g);out.connect(MO);o.start(t0+st);o.stop(t0+st+dur+.03)};
+ const bell=(f,st,dur,vol)=>[[1,1,1],[2.01,.4,.6],[3,.2,.4],[4.2,.1,.25]].forEach(p=>tone(f*p[0],st,dur*p[2],"sine",vol*p[1]));
+ const soft=()=>{if(ok){bell(784,0,.9,.7);bell(988,.09,.9,.7);bell(1319,.18,1,.7)}else{tone(233,0,.3,"sine",1,900);tone(196,.12,.4,"sine",1,900)}};
+ if(S=="custom"){const bf=ok?CB.ok:CB.ng;if(bf){const src=AC.createBufferSource(),g=AC.createGain();src.buffer=bf;g.gain.value=Math.min(1.5,V*1.5);src.connect(g);g.connect(AC.destination);src.start()}else soft()}
+ else if(S=="soft")soft();
+ else if(S=="quiz"){if(ok){bell(988,0,.6,.8);bell(1319,.15,1,.8)}else{tone(120,0,.45,"sawtooth",.7,700);tone(127,0,.45,"sawtooth",.7,700)}}
+ else if(S=="game"){if(ok){tone(988,0,.08,"square",.4,4500);tone(1319,.08,.35,"square",.4,4500)}else{tone(392,0,.12,"square",.4,3000);tone(262,.12,.12,"square",.4,3000);tone(196,.24,.3,"square",.4,3000)}}
+ else if(S=="tick"){if(ok)tone(1800,0,.07,"triangle",.8);else tone(300,0,.1,"triangle",.9)}
+}catch(e){}}
+$("fx").value=FX.style;$("fxr").value=FX.vol;$("fxv").textContent=Math.round(FX.vol*100)+"%";
+$("fx").onchange=async()=>{FX.style=$("fx").value;saveFX();if(FX.style=="custom"){$("fxm").style.color="";await loadCustom()}sfx(true)};
+$("fxr").oninput=()=>{FX.vol=+$("fxr").value;$("fxv").textContent=Math.round(FX.vol*100)+"%";saveFX()};
+$("fxr").onchange=()=>sfx(true);
+$("fxo").onclick=()=>sfx(true);$("fxn").onclick=()=>sfx(false);
+if(FX.style=="custom")loadCustom();
+let preSp=null;
+function preSpeak(){preSp=null;if(!$("auto").checked||rev||pos+1>=Q.length)return;preSp=Q[pos+1];sp(preSp.w)}
 let vSig=null;
 function renderVoice(force){const e=$("vs");if(!e)return;const l=enVoices(),sig=l.map(v=>v.name).join("|");
  $("vcnt").textContent=l.length?"この端末で見つかった英語の音声："+l.length+"件":"英語の音声が見つかりません。端末の設定で音声をダウンロードしてから、「音声リストを更新」を押してください。";
@@ -293,7 +334,7 @@ $("vt").onclick=()=>sp("Hello. How are you doing today? I read a book.");
 $("spb").onclick=()=>{if(Q[pos])sp(Q[pos].w)};
 try{speechSynthesis.addEventListener("voiceschanged",renderVoice)}catch(e){}
 function spBtn(c,t){const b=document.createElement("button");b.textContent="🔊";b.style.cssText="margin-top:10px;padding:4px 14px;font-size:18px";["pointerdown","pointerup","click"].forEach(n=>b.addEventListener(n,e=>e.stopPropagation()));b.addEventListener("click",()=>sp(t));c.append(b)}
-function autoSp(){$("bOk").style.opacity=$("bNg").style.opacity=seen?1:.4;if($("auto").checked&&flipped===rev)sp(Q[pos].w)}
+function autoSp(){$("bOk").style.opacity=$("bNg").style.opacity=seen?1:.4;if($("auto").checked&&flipped===rev){if(preSp&&preSp===Q[pos])preSp=null;else sp(Q[pos].w)}}
 function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:w.b,L=Math.max(String(w.f).length,String(w.b).length),fs=L>40?18:L>26?22:L>16?26:30;
  c.innerHTML="";c.style.justifyContent="flex-start";c.style.minHeight="250px";
  const m=document.createElement("div");m.style.cssText="height:100px;width:100%;display:flex;align-items:center;justify-content:center;font-size:"+fs+"px;line-height:1.35;overflow:hidden";m.textContent=flipped?back:front;c.append(m);
