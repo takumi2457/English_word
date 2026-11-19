@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>マイ単語帳</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2f6fed">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="単語帳">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+:root{--bg:#f6f5f1;--sf:#fff;--tx:#222;--mu:#777;--ac:#2f6fed;--ok:#1d9a5b;--ng:#d6453d;--bd:#ddd;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161616;--sf:#242424;--tx:#eee;--mu:#999;--ac:#6b9bff;--ok:#4cc88a;--ng:#ff7b73;--bd:#3a3a3a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#161616;--sf:#242424;--tx:#eee;--mu:#999;--ac:#6b9bff;--ok:#4cc88a;--ng:#ff7b73;--bd:#3a3a3a;color-scheme:dark}
+*{box-sizing:border-box}
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+input,textarea,.st{-webkit-user-select:text;user-select:text}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Hiragino Sans","Yu Gothic",sans-serif;line-height:1.6}
+main{max-width:560px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:4px 0 12px}
+nav{display:flex;gap:8px;margin-bottom:16px}nav button{flex:1}
+button{font:inherit;padding:10px 14px;border:1px solid var(--bd);border-radius:10px;background:var(--sf);color:var(--tx);cursor:pointer}
+button.on,button.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
+.box{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:14px}
+label{display:block;font-size:13px;color:var(--mu);margin-bottom:4px}
+input[type=number],input[type=text],select{width:100%;font:inherit;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}
+.row{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.row>div{flex:1;min-width:90px}
+.chk{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0;font-size:14px}
+.chk label{display:flex;gap:6px;align-items:center;color:var(--tx);margin:0}
+.card{min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:28px;cursor:pointer;padding:24px;user-select:none;-webkit-user-select:none;word-break:break-word;touch-action:none;transition:transform .2s,border-color .2s}
+.card.drag{transition:none}
+.card small{font-size:12px;color:var(--mu);margin-top:14px}
+.card.back{border-color:var(--ac)}
+.acts{display:flex;gap:10px}.acts button{flex:1;padding:14px;font-weight:600}
+.ok{color:var(--ok);border-color:var(--ok)}.ng{color:var(--ng);border-color:var(--ng)}
+.bar{height:6px;background:var(--bd);border-radius:3px;overflow:hidden;margin:8px 0 12px}
+.bar i{display:block;height:100%;background:var(--ac)}
+.info{display:flex;justify-content:space-between;font-size:13px;color:var(--mu)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td{padding:6px 4px;border-bottom:1px solid var(--bd)}td.n{color:var(--mu);width:34px}td.k{width:24px}
+.sc{overflow-x:auto}.hide{display:none}.mu{color:var(--mu);font-size:13px}
+.st{white-space:pre-line;margin:0 0 12px}.dup{color:var(--ng)}
+</style></head>
+<body><main>
+<h1>📚 マイ単語帳</h1>
+
+
+<nav id="nv"><button id="t1" class="on">学習</button><button id="t2">管理</button></nav>
+
+<section id="p1">
+ <div id="setup"><div class="box"><label>出題する単語帳（複数選択できます）</label><div id="sel" class="chk"></div>
+  <div class="row">
+   <div><label>開始番号</label><input type="number" id="from" min="1" value="1"></div>
+   <div><label>終了番号</label><input type="number" id="to" min="1" value="10"></div>
+  </div>
+  <p class="mu" id="total"></p>
+  <div class="chk">
+   <label><input type="checkbox" id="shuf" checked>シャッフル</label>
+   <label><input type="checkbox" id="only">まだ覚えていないものだけ</label>
+   <label><input type="checkbox" id="rev">意味から出題</label>
+   <label><input type="checkbox" id="auto" checked>英単語を自動で発音</label>
+  </div>
+  <button class="pri" id="start" style="width:100%">スタート</button>
+ </div></div>
+ <div id="quiz" class="hide">
+  <div class="info"><span id="cnt"></span><span><button id="spb" style="padding:4px 10px;font-size:13px">🔊 発音</button> <button id="quit" style="padding:4px 10px;font-size:13px">やめる</button></span></div>
+  <div class="bar"><i id="pg" style="width:0"></i></div>
+  <div class="box card" id="card"></div>
+  <div class="acts"><button class="ng" id="bNg">✗ まだ</button><button class="ok" id="bOk">○ 覚えた</button></div>
+  <p id="nudge" class="mu" style="text-align:center;color:var(--ng);min-height:1.6em;margin:8px 0 0"></p>
+  
+  <p class="mu" style="text-align:center">タップで裏返し ／ 右スワイプ＝覚えた ／ 左スワイプ＝まだ<br>（PCは ↓／Space＝めくる、↑＝もう一度発音、→＝覚えた、←＝まだ）</p>
+ </div>
+ <div id="result" class="hide box" style="text-align:center">
+  <h2 style="margin-top:0">おつかれさまでした！</h2><p id="rtxt"></p>
+  <div id="dbn" class="hide"><p class="mu" id="dtx" style="color:var(--ng)"></p><button id="dbtn" class="pri" style="width:100%;margin-bottom:12px">記録を書き出す</button></div>
+  <div class="acts"><button id="again">間違えた分をもう一度</button><button class="pri" id="home">範囲選択へ</button></div>
+ </div>
+</section>
+
+<section id="p2" class="hide">
+ <p class="mu st" id="st"></p>
+ <div class="box">
+  <label>Excel／CSVを読み込み（シート＝単語帳。列：単語・意味・品詞・例文・例文訳。1行目に「覚えた」「読み方」「発音記号」と書いた列があれば、それも読み込みます）</label>
+  <div class="chk">
+   <label><input type="radio" name="mode" value="rep" checked>入れ替え（ファイルの内容に置き換え。覚えた記録は引き継ぎ）</label>
+   <label><input type="radio" name="mode" value="add">追加（新しい単語だけ足す）</label>
+  </div>
+  <input type="file" id="file" accept=".xlsx,.xlsm,.xls,.csv,.txt"><div id="shs" class="hide"><label style="margin-top:10px">読み込むシートを選んでください</label><div id="shl" class="chk"></div><button id="go" class="pri" style="width:100%">選んだシートを読み込む</button></div>
+  <button id="expx" class="pri" style="width:100%;margin-top:12px">Excelに書き出し（全シート・覚えた記録つき）</button>
+  <div style="margin-top:18px"><label>「覚えた」記録をExcelに戻す（元のExcelの行に合わせた列を作ります）</label>
+   <div class="row"><div style="flex:3"><select id="rk"></select></div><button id="rkb" class="pri">列を作成</button></div>
+   <textarea id="rkt" class="hide" readonly style="width:100%;min-height:120px;font:inherit;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);margin-top:8px"></textarea>
+   <p class="mu st" id="rkm" style="margin:8px 0 0"></p></div>
+  <div style="margin-top:18px"><label>覚えた記録ファイル（CSV）：単語帳のExcelとは別に、覚えたかどうかだけを保存します</label>
+   <div class="row"><button id="rwb" class="pri">記録を書き出す</button><button id="rrb">記録を読み込む</button></div>
+   <input type="file" id="rfile" accept=".csv,.txt" class="hide">
+   <p class="mu" style="margin:8px 0 0">新しく始めるときは、①Excelの単語帳を読み込む → ②この記録を読み込む の順に行います。</p></div>
+ </div>
+ <div class="box">
+  <label>🔊 発音の設定（この端末だけに保存されます）</label>
+  <select id="vs"></select>
+  <label style="margin-top:10px">読み上げの速さ：<span id="vrv"></span></label>
+  <input type="range" id="vr" min="0.6" max="1.1" step="0.05" style="width:100%">
+  <button id="vt" class="pri" style="width:100%;margin-top:10px">この音声で試し聞き</button>
+  <p class="mu" style="margin:8px 0 0">声の種類は端末に入っているものから選べます。「Enhanced」「Premium」「Natural」と付くものが自然です。iPhoneは「設定→アクセシビリティ→読み上げコンテンツ→声→英語」から追加できます。Androidは端末のテキスト読み上げ設定から追加できます。</p>
+ </div>
+ <div class="box">
+  <label>編集する単語帳</label><select id="bk"></select><label style="margin-top:8px">単語帳の名前</label><input type="text" id="nm">
+  <div class="row" style="margin-top:10px"><button id="bnew">新規作成</button><button id="bren">名前変更</button><button id="bdel" class="ng">この単語帳を削除</button></div>
+ </div>
+ <div class="box">
+  <label>単語（表）</label><input type="text" id="af">
+  <label style="margin-top:8px">意味（裏）</label><input type="text" id="ab">
+  <label style="margin-top:8px">読み方（任意：発音がおかしい時に、読ませたい綴りを書く。例 read → red）</label><input type="text" id="ar">
+  <label style="margin-top:8px">発音記号（任意：表示だけ。例 /rɛd/）</label><input type="text" id="ai">
+  <p class="dup mu" id="dupw" style="margin:6px 0 0"></p>
+  <button class="pri" id="add" style="width:100%;margin-top:10px">この単語帳に追加</button>
+ </div>
+ <div class="box">
+  <div class="row" style="margin-bottom:8px"><button id="exp">CSVをコピー</button><button id="ddall">全シートの重複を確認</button><button id="dd">この単語帳の重複を整理</button><button id="reset">記録リセット</button></div>
+  <div class="sc"><table id="list"></table></div>
+ </div>
+</section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const KEY="tangocho:v2",OK=/^(○|〇|◯|✓|✔|1|y|yes|true|済|覚えた)$/i;
+let books=[],cur=0,sel=new Set([0]),Q=[],pos=0,missed=[],rev=false,flipped=false;
+const $=id=>document.getElementById(id);
+const W=()=>books[cur].words;
+const norm=s=>String(s).trim().toLowerCase();
+const say=t=>{$("st").textContent=t};
+function load(){try{const s=localStorage.getItem(KEY);if(s){const o=JSON.parse(s);books=o.books||[];cur=o.cur||0;sel=new Set(o.sel||[]);dirty=o.dirty||0}else{const v=localStorage.getItem("tangocho:v1");if(v)books=[{name:"単語帳",words:JSON.parse(v)}]}}catch(e){}
+ if(!books.length)books=[{name:"サンプル",words:[["apple","りんご"],["book","本"],["water","水"],["friend","友達"],["study","勉強する"],["happy","幸せな"],["library","図書館"],["important","重要な"]].map(a=>({f:a[0],b:a[1],k:false}))}];
+ if(cur>=books.length||cur<0)cur=0;sel=new Set([...sel].filter(i=>i<books.length));if(!sel.size)sel.add(cur)}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({books,cur,sel:[...sel],dirty}))}catch(e){}}
+function renderBooks(){const s=$("bk");s.innerHTML="";books.forEach((b,i)=>{const o=document.createElement("option");o.value=i;o.textContent=b.name+"（"+b.words.length+"語）";s.append(o)});s.value=cur;$("nm").value=books[cur].name}
+function pool(){const p=[];books.forEach((b,bi)=>{if(sel.has(bi))b.words.forEach((w,i)=>p.push({w,n:i+1,bk:b.name}))});return p}
+function renderSel(){const d=$("sel");d.innerHTML="";books.forEach((b,i)=>{const l=document.createElement("label"),c=document.createElement("input");c.type="checkbox";c.checked=sel.has(i);c.onchange=()=>{if(c.checked)sel.add(i);else sel.delete(i);if(!sel.size){sel.add(i);c.checked=true}save();$("from").value=1;$("to").value=pool().length||1;refresh()};l.append(c,b.name+"（"+b.words.length+"）");d.append(l)})}
+function refresh(){const p=pool(),n=p.length;$("total").textContent="選択中："+n+"語（覚えた："+p.filter(x=>x.w.k).length+"語）";if(!(+$("to").value>=1)||+$("to").value>n)$("to").value=n||1}
+function all(){renderBooks();renderSel();renderRk();banner();refresh();renderList();renderVoice()}
+$("bk").onchange=()=>{cur=+$("bk").value;save();all()};
+function show(t){$("p1").classList.toggle("hide",t!=1);$("p2").classList.toggle("hide",t!=2);$("t1").classList.toggle("on",t==1);$("t2").classList.toggle("on",t==2);all()}
+$("t1").onclick=()=>show(1);$("t2").onclick=()=>show(2);
+
+function begin(idx){if(!idx.length){$("total").textContent="出題できる単語がありません。範囲や条件を変えてください。";return}
+ Q=idx.slice();pos=0;missed=[];$("setup").classList.add("hide");$("result").classList.add("hide");$("quiz").classList.remove("hide");draw()}
+$("start").onclick=()=>{const w=pool();const a=Math.max(1,+$("from").value||1),b=Math.min(w.length,+$("to").value||w.length);rev=$("rev").checked;
+ let idx=[];for(let i=a-1;i<b;i++)if(!$("only").checked||!w[i].w.k)idx.push(w[i]);
+ if($("shuf").checked)idx.sort(()=>Math.random()-.5);begin(idx)};
+function draw(){flipped=false;seen=false;const c=$("card");c.classList.remove("back");c.style.transform="";c.style.borderColor="";
+ face();
+ $("cnt").textContent=(pos+1)+" / "+Q.length;$("pg").style.width=(pos/Q.length*100)+"%"}
+function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:w.b;c.innerHTML="";const add=(t,st)=>{if(!t)return;const d=document.createElement("div");d.textContent=t;if(st)d.style.cssText=st;c.append(d)};
+ if(!flipped){add(front)}
+ else{add(back);add(w.p,"font-size:13px;color:var(--mu);margin-top:6px");add(w.e,"font-size:15px;margin-top:16px;text-align:left;width:100%");add(w.j,"font-size:13px;color:var(--mu);margin-top:4px;text-align:left;width:100%");add(x.bk+" No."+x.n,"font-size:12px;color:var(--mu);margin-top:14px")}autoSp()}
+function flip(){flipped=!flipped;if(flipped)seen=true;$("card").classList.toggle("back",flipped);face()}
+const cd=$("card");let sx=0,dx=0,sy=0,dy=0,t0=0,drag=false,moved=false;
+cd.addEventListener("pointerdown",e=>{drag=true;moved=false;sx=e.clientX;sy=e.clientY;dx=0;dy=0;t0=Date.now();cd.classList.add("drag");try{cd.setPointerCapture(e.pointerId)}catch(x){}});
+cd.addEventListener("pointermove",e=>{if(!drag)return;dx=e.clientX-sx;dy=e.clientY-sy;if(Math.abs(dx)>8||Math.abs(dy)>8)moved=true;cd.style.transform="translateX("+dx+"px) rotate("+dx/20+"deg)";cd.style.borderColor=dx>30?"var(--ok)":dx<-30?"var(--ng)":""});
+function endDrag(e){if(!drag)return;drag=false;if(e&&e.type=="pointerup"){dx=e.clientX-sx;dy=e.clientY-sy}const fl=Math.hypot(dx,dy)/Math.max(1,Date.now()-t0)>.35;if(dx>60||(fl&&dx>25))fly(1);else if(dx<-60||(fl&&dx<-25))fly(-1);else{cd.classList.remove("drag");cd.style.transform="";cd.style.borderColor="";if(!moved)flip()}}
+cd.addEventListener("pointerup",endDrag);cd.addEventListener("pointercancel",endDrag);
+let busy=false;function fly(d,dn){if(busy)return;if(!seen){cd.classList.remove("drag");cd.style.transform="";cd.style.borderColor="";nudge();return}busy=true;cd.classList.remove("drag");cd.style.borderColor=d>0?"var(--ok)":"var(--ng)";cd.style.transform=dn?"translateY(520px)":"translateX("+d*500+"px) rotate("+d*25+"deg)";setTimeout(()=>{cd.classList.add("drag");busy=false;answer(d>0)},180)}
+function answer(ok){if($("quiz").classList.contains("hide"))return;const x=Q[pos];x.w.k=ok;dirty++;if(!ok)missed.push(x);save();banner();pos++;
+ if(pos>=Q.length){$("quiz").classList.add("hide");$("result").classList.remove("hide");$("rtxt").textContent=Q.length+"問中 "+(Q.length-missed.length)+"問「覚えた」";$("again").classList.toggle("hide",!missed.length)}else draw()}
+$("bOk").onclick=()=>fly(1);$("bNg").onclick=()=>fly(-1);
+$("quit").onclick=()=>{$("quiz").classList.add("hide");$("setup").classList.remove("hide");refresh()};
+$("again").onclick=()=>begin(missed.slice());
+$("home").onclick=()=>{$("result").classList.add("hide");$("setup").classList.remove("hide");refresh()};
+document.addEventListener("keydown",e=>{if($("quiz").classList.contains("hide")||$("p1").classList.contains("hide"))return;
+ if(e.code=="Space"){e.preventDefault();flip()}else if(e.key=="ArrowDown"){e.preventDefault();flip()}else if(e.key=="ArrowUp"){e.preventDefault();sp(Q[pos].w)}else if(e.key=="ArrowRight")fly(1);else if(e.key=="ArrowLeft")fly(-1)});
+
+function twice(id,fn){const b=$(id),t=b.textContent;let on=false,h;b.onclick=()=>{if(on){clearTimeout(h);on=false;b.textContent=t;fn()}else{on=true;b.textContent="もう一度押して確定";h=setTimeout(()=>{on=false;b.textContent=t},3000)}}}
+function renderList(){const t=$("list");t.innerHTML="";const cnt={};W().forEach(w=>{const k=norm(w.f);cnt[k]=(cnt[k]||0)+1});
+ W().forEach((w,i)=>{const r=t.insertRow();const a=r.insertCell();a.className="n";a.textContent=i+1;
+ r.insertCell().textContent=(cnt[norm(w.f)]>1?"⚠️ ":"")+w.f+(w.r?"　→ "+w.r:"");r.insertCell().textContent=w.b;
+ const k=r.insertCell();k.className="k";k.textContent=w.k?"✅":"";const d=r.insertCell();d.style.whiteSpace="nowrap";const mk=(t,fn)=>{const x=document.createElement("button");x.textContent=t;x.style.padding="2px 8px";x.style.marginLeft="3px";x.onclick=fn;d.append(x)};
+ mk("🔊",()=>sp(w));mk("✎",()=>{const v=prompt("「"+w.f+"」の読み方（発音させたい綴り。空欄にすると元に戻ります）",w.r||"");if(v===null)return;w.r=v.trim();save();all();sp(w)});mk("×",()=>{W().splice(i,1);save();all()})})}
+$("af").oninput=()=>{const v=$("af").value;const i=v.trim()?W().findIndex(w=>norm(w.f)==norm(v)):-1;$("dupw").textContent=i>=0?"⚠️ すでに登録されています（"+(i+1)+"番）":""};
+$("add").onclick=()=>{const f=$("af").value.trim(),b=$("ab").value.trim();if(!f||!b)return;
+ if(W().some(w=>norm(w.f)==norm(f))){say("「"+f+"」は既に登録されています");return}
+ W().push({f,b,k:false,r:$("ar").value.trim(),i:$("ai").value.trim()});$("af").value="";$("ab").value="";$("ar").value="";$("ai").value="";$("dupw").textContent="";$("af").focus();save();say("「"+f+"」を追加しました");all()};
+$("bnew").onclick=()=>{const n=$("nm").value.trim();if(!n)return;if(books.some(b=>b.name==n)){say("同じ名前の単語帳があります");return}books.push({name:n,words:[]});cur=books.length-1;save();say("単語帳「"+n+"」を作成しました");all()};
+$("bren").onclick=()=>{const n=$("nm").value.trim();if(!n)return;if(books.some((b,i)=>b.name==n&&i!=cur)){say("同じ名前の単語帳があります");return}books[cur].name=n;save();say("名前を変更しました");all()};
+twice("bdel",()=>{books.splice(cur,1);if(!books.length)books=[{name:"単語帳",words:[]}];cur=0;save();say("削除しました");all()});
+twice("dd",()=>{const seen=new Set(),out=[];let n=0;W().forEach(w=>{const k=norm(w.f);if(seen.has(k)){n++;return}seen.add(k);out.push(w)});books[cur].words=out;save();say(n?"重複"+n+"語（後から登録した方）を削除しました":"重複はありません");all()});
+twice("reset",()=>{W().forEach(w=>w.k=false);save();say("この単語帳の記録をリセットしました");all()});
+$("exp").onclick=async()=>{const q=x=>/[",\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x;const s=W().map(w=>q(w.f)+","+q(w.b)+","+(w.k?"○":"")).join("\n");try{await navigator.clipboard.writeText(s);say("CSV形式でコピーしました")}catch(e){prompt("コピーしてください",s)}};
+
+function ingest(wb,rep){const keep=books[cur].name,next=rep?[]:books,msg=[];let tot=0;
+ wb.SheetNames.forEach(nm=>{const rows=XLSX.utils.sheet_to_json(wb.Sheets[nm],{header:1,defval:"",raw:false});
+  if(rows[0]&&/^(単語|word|表|front)$/i.test(String(rows[0][0]).trim()))rows.shift();
+  const old=books.find(b=>b.name==nm),b=rep||!old?{name:nm,words:[]}:old;
+  const seen=new Set(rep?[]:b.words.map(w=>norm(w.f))),oldK=new Map(old?old.words.map(w=>[norm(w.f),w.k]):[]);let n=0,d=0;
+  rows.forEach(r=>{const f=String(r[0]).trim(),m=String(r[1]||"").trim();if(!f||!m)return;const key=norm(f);if(seen.has(key)){d++;return}seen.add(key);
+   let k=OK.test(String(r[2]||"").trim());if(rep&&!k&&oldK.get(key))k=true;b.words.push({f,b:m,k});n++});
+  tot+=n;if(rep||!old)next.push(b);msg.push("・"+nm+"："+n+"語"+(rep?"":"追加")+(d?"（重複"+d+"語はスキップ）":""))});
+ if(!tot){say("読み込める単語がありませんでした（1列目＝単語、2列目＝意味）");return}
+ if(rep){books=next;cur=Math.max(0,books.findIndex(b=>b.name==keep))}
+ save();all();say((rep?"入れ替え":"追加")+"読み込み完了\n"+msg.join("\n"))}
+$("file").onchange=e=>{const f=e.target.files[0];if(!f)return;if(typeof XLSX=="undefined"){say("Excel読み込みの部品を取得できませんでした。通信状況を確認してください");e.target.value="";return}
+ const rep=document.querySelector("input[name=mode]:checked").value=="rep";const fr=new FileReader();
+ fr.onload=()=>{try{let wb;if(/\.(csv|txt)$/i.test(f.name)){let s;try{s=new TextDecoder("utf-8",{fatal:true}).decode(fr.result)}catch(x){s=new TextDecoder("shift_jis").decode(fr.result)}
+  wb=XLSX.read(s.replace(/^\uFEFF/,""),{type:"string",raw:true});const nm=f.name.replace(/\.\w+$/,"");wb.Sheets[nm]=wb.Sheets[wb.SheetNames[0]];wb.SheetNames=[nm]}else wb=XLSX.read(new Uint8Array(fr.result),{type:"array"});
+  ingest(wb,rep)}catch(x){say("読み込めませんでした。ファイル形式を確認してください")}e.target.value=""};fr.readAsArrayBuffer(f)};
+$("expx").onclick=async()=>{if(typeof XLSX=="undefined"){say("Excel書き出しの部品を取得できませんでした");return}
+ const d=window.claude&&claude.use?await claude.use("downloads"):null;if(!d){say("この環境では保存機能を使えません。「CSVをコピー」をご利用ください");return}
+ const wb=XLSX.utils.book_new(),used=new Set();
+ books.forEach((b,i)=>{let nm=b.name.replace(/[\\\/\?\*\[\]:]/g,"_").slice(0,31)||"Sheet"+(i+1);while(used.has(nm.toLowerCase()))nm=nm.slice(0,28)+"_"+i;used.add(nm.toLowerCase());
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["単語","意味","覚えた"]].concat(b.words.map(w=>[w.f,w.b,w.k?"○":""]))),nm)});
+ const out=XLSX.write(wb,{type:"array",bookType:"xlsx"});
+ try{await d.save({filename:"単語帳.xlsx",data:new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})});say("書き出しました。元のExcelと置き換えて保存してください")}catch(x){say(x&&x.code=="declined"?"保存をキャンセルしました":"保存できませんでした")}};
+let PW=null;
+function readRows(ws){const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false});const base=ws["!ref"]?XLSX.utils.decode_range(ws["!ref"]).s.r+1:1;rows.forEach((r,i)=>{r.rn=base+i});const h=(rows[0]||[]).map(x=>String(x).trim());const hasH=/^(単語|熟語|複合名詞|word|表|front)$/i.test(h[0]||"");if(hasH)rows.shift();const ix=n=>hasH?h.findIndex(x=>n.test(x)):-1;return{rows,k:ix(/^覚えた$/),r:ix(/^(読み方|読み上げ|発音|reading)$/i),i:ix(/^(発音記号|ipa)$/i)}}
+function ingest(wb,rep,names){const keep=books[cur].name,next=rep?[]:books,msg=[];let tot=0;
+ names.forEach(nm=>{const R=readRows(wb.Sheets[nm]),rows=R.rows,ki=R.k,ri=R.r,ii=R.i;
+  const old=books.find(b=>b.name==nm),b=rep||!old?{name:nm,words:[]}:old;
+  const seen=new Set(rep?[]:b.words.map(w=>norm(w.f))),oldK=new Map(old?old.words.map(w=>[norm(w.f),w.k]):[]);let n=0,d=0;
+  const g=(r,i)=>i!=ki&&i!=ri&&i!=ii&&r[i]!=null?String(r[i]).trim():"";const oldX=new Map(old?old.words.map(w=>[norm(w.f),w]):[]);
+  rows.forEach(r=>{const f=String(r[0]).trim(),m=String(r[1]||"").trim();if(!f||!m)return;const key=norm(f);if(seen.has(key)){d++;return}seen.add(key);
+   let k=ki>=0&&OK.test(String(r[ki]||"").trim());if(rep&&!k&&oldK.get(key))k=true;
+   const o=rep?oldX.get(key):null;b.words.push({f,b:m,k,p:g(r,2),e:g(r,3),j:g(r,4),r:(ri>=0?String(r[ri]||"").trim():"")||(o&&o.r)||"",i:(ii>=0?String(r[ii]||"").trim():"")||(o&&o.i)||"",rn:r.rn});n++});
+  tot+=n;if(rep||!old)next.push(b);msg.push("・"+nm+"："+n+"語"+(rep?"":"追加")+(d?"（重複"+d+"語はスキップ）":""))});
+ if(!tot){say("読み込める単語がありませんでした（1列目＝単語、2列目＝意味）");return}
+ if(rep){books=next;cur=Math.max(0,books.findIndex(b=>b.name==keep));sel=new Set([cur])}
+ save();all();say((rep?"入れ替え":"追加")+"読み込み完了\n"+msg.join("\n"))}
+$("file").onchange=e=>{const f=e.target.files[0];if(!f)return;if(typeof XLSX=="undefined"){say("Excel読み込みの部品を取得できませんでした。通信状況を確認してください");e.target.value="";return}
+ const fr=new FileReader();fr.onload=()=>{try{let wb;if(/\.(csv|txt)$/i.test(f.name)){let s;try{s=new TextDecoder("utf-8",{fatal:true}).decode(fr.result)}catch(x){s=new TextDecoder("shift_jis").decode(fr.result)}
+  wb=XLSX.read(s.replace(/^\uFEFF/,""),{type:"string",raw:true});const nm=f.name.replace(/\.\w+$/,"");wb.Sheets[nm]=wb.Sheets[wb.SheetNames[0]];wb.SheetNames=[nm]}else wb=XLSX.read(new Uint8Array(fr.result),{type:"array"});
+  PW=wb;const l=$("shl");l.innerHTML="";wb.SheetNames.forEach(nm=>{const lb=document.createElement("label"),c=document.createElement("input");c.type="checkbox";c.value=nm;c.checked=nm!="テスト";lb.append(c,nm);l.append(lb)});$("shs").classList.remove("hide");say("シートを選んで「選んだシートを読み込む」を押してください")}catch(x){say("読み込めませんでした。ファイル形式を確認してください")}e.target.value=""};fr.readAsArrayBuffer(f)};
+$("go").onclick=()=>{if(!PW)return;const names=[...$("shl").querySelectorAll("input:checked")].map(c=>c.value);if(!names.length){say("シートを1つ以上選んでください");return}
+ const rep=document.querySelector("input[name=mode]:checked").value=="rep";ingest(PW,rep,names);PW=null;$("shs").classList.add("hide")};
+$("ddall").onclick=()=>{const m=new Map();books.forEach(b=>b.words.forEach((w,i)=>{const k=norm(w.f);if(!m.has(k))m.set(k,[]);m.get(k).push(b.name+" "+(i+1)+"番")}));const r=[...m].filter(x=>x[1].length>1).map(x=>"・"+x[0]+"："+x[1].join("、"));say(r.length?"重複が"+r.length+"件あります\n"+r.join("\n"):"全シートで重複はありません")};
+$("expx").onclick=async()=>{if(typeof XLSX=="undefined"){say("Excel書き出しの部品を取得できませんでした");return}
+ const d=window.claude&&claude.use?await claude.use("downloads"):null;if(!d){say("この環境では保存機能を使えません。「CSVをコピー」をご利用ください");return}
+ const wb=XLSX.utils.book_new(),used=new Set();
+ books.forEach((b,i)=>{let nm=b.name.replace(/[\\\/\?\*\[\]:]/g,"_").slice(0,31)||"Sheet"+(i+1);while(used.has(nm.toLowerCase()))nm=nm.slice(0,28)+"_"+i;used.add(nm.toLowerCase());
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["単語","意味","品詞","例文","例文訳","覚えた","読み方","発音記号"]].concat(b.words.map(w=>[w.f,w.b,w.p||"",w.e||"",w.j||"",w.k?"○":"",w.r||"",w.i||""]))),nm)});
+ const out=XLSX.write(wb,{type:"array",bookType:"xlsx"});
+ try{await d.save({filename:"単語帳.xlsx",data:new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})});say("書き出しました（マクロは含まれません）。元の.xlsmは残しておいてください")}catch(x){say(x&&x.code=="declined"?"保存をキャンセルしました":"保存できませんでした")}};
+function renderRk(){const s=$("rk"),v=s.value;s.innerHTML="";books.forEach((b,i)=>{const o=document.createElement("option");o.value=i;o.textContent=b.name;s.append(o)});s.value=v!==""&&+v<books.length?v:cur}
+$("rkb").onclick=()=>{const b=books[+$("rk").value],ws=b.words.filter(w=>w.rn),skip=b.words.length-ws.length,ta=$("rkt");
+ if(!ws.length){ta.classList.add("hide");$("rkm").textContent="この単語帳には元のExcelの行番号の記録がありません。Excelを「入れ替え」で一度読み込み直してから、もう一度お試しください。";return}
+ const mx=Math.max(...ws.map(w=>w.rn)),col=Array(mx+1).fill("");let n=0;ws.forEach(w=>{if(w.k){col[w.rn]="○";n++}});if(!ws.some(w=>w.rn==1))col[1]="覚えた";
+ const t=col.slice(1).join("\n");ta.value=t;ta.classList.remove("hide");ta.focus();ta.select();try{navigator.clipboard.writeText(t).catch(()=>{})}catch(x){}
+ const lost=b.words.filter(w=>!w.rn&&w.k).length;
+ $("rkm").textContent="「"+b.name+"」：覚えた "+n+"語。上の欄の内容をコピーして、Excelの同じ名前のシートの H1 に貼り付けてください（1行目が「覚えた」の見出しです）。自動でコピーされない場合は、欄をタップして全選択→コピーしてください。"+(lost?"\n※行番号がなく含められない「覚えた」が"+lost+"語あります（アプリで手入力した単語など）。":"")};
+let dirty=0;
+function banner(){const b=$("dbn");b.classList.toggle("hide",dirty<=0);$("dtx").textContent="前回の書き出し以降、"+dirty+"回の学習記録があります。記録ファイルを書き出して保管してください。"}
+function recCSV(){const q=x=>/[",\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x;const L=["シート,単語,覚えた"];books.forEach(b=>b.words.forEach(w=>L.push(q(b.name)+","+q(w.f)+","+(w.k?"○":""))));return L.join("\r\n")}
+async function recSave(){const d=window.claude&&claude.use?await claude.use("downloads"):null,t=recCSV();
+ if(!d){try{await navigator.clipboard.writeText(t);return "この環境ではファイル保存ができないため、CSVの内容をコピーしました。メモ帳などに貼り付けて、覚えた記録.csv として保存してください。"}catch(x){return "保存できませんでした"}}
+ try{await d.save({filename:"覚えた記録.csv",data:new Blob(["\uFEFF"+t],{type:"text/csv"})});dirty=0;save();banner();return "覚えた記録.csv を書き出しました。単語帳のExcelと一緒に保管してください。"}catch(x){return x&&x.code=="declined"?"保存をキャンセルしました":"保存できませんでした"}}
+$("rwb").onclick=async()=>say(await recSave());
+$("dbtn").onclick=async()=>{const m=await recSave();if(dirty>0)$("dtx").textContent=m};
+$("rrb").onclick=()=>$("rfile").click();
+$("rfile").onchange=e=>{const f=e.target.files[0];if(!f)return;if(typeof XLSX=="undefined"){say("読み込みの部品を取得できませんでした");e.target.value="";return}
+ const fr=new FileReader();fr.onload=()=>{try{let s;try{s=new TextDecoder("utf-8",{fatal:true}).decode(fr.result)}catch(x){s=new TextDecoder("shift_jis").decode(fr.result)}
+  const wb=XLSX.read(s.replace(/^\uFEFF/,""),{type:"string",raw:true}),rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:"",raw:false});
+  if(rows[0]&&String(rows[0][0]).trim()=="シート")rows.shift();
+  const idx=new Map();books.forEach(b=>b.words.forEach(w=>idx.set(b.name+"\u0001"+norm(w.f),w)));
+  let hit=0,miss=0,on=0;rows.forEach(r=>{const nm=String(r[0]).trim(),f=String(r[1]).trim();if(!nm||!f)return;const w=idx.get(nm+"\u0001"+norm(f));if(!w){miss++;return}w.k=OK.test(String(r[2]||"").trim());hit++;if(w.k)on++});
+  save();all();say("記録を読み込みました：一致 "+hit+"語（覚えた "+on+"語）"+(miss?"\n単語帳に見つからない記録が"+miss+"件ありました（Excelから削除・変更された単語の可能性があります）。":"")+(hit?"":"\n先にExcelの単語帳を読み込んでください。"))}catch(x){say("記録ファイルを読み込めませんでした")}e.target.value=""};fr.readAsArrayBuffer(f)};
+const VK="tangocho:voice";let VS={name:"",rate:.9};try{Object.assign(VS,JSON.parse(localStorage.getItem(VK)||"{}"))}catch(e){}
+const saveVS=()=>{try{localStorage.setItem(VK,JSON.stringify(VS))}catch(e){}};
+const ipaT=t=>t?(/^[\/\[]/.test(t)?t:"/"+t+"/"):"";
+const enVoices=()=>{try{return speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang))}catch(e){return[]}};
+function vScore(v){let c=0;const n=v.name,l=v.lang.replace("_","-");if(/^en-US$/i.test(l))c+=50;else if(/^en-(GB|AU|CA|IE)/i.test(l))c+=20;if(/premium|enhanced|natural|neural/i.test(n))c+=40;if(/Google US English|Samantha|Ava|Allison|Zoe|Evan|Nicky|Aaron/i.test(n))c+=30;if(/compact/i.test(n))c-=10;if(/Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Deranged|Good News|Hysterical|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Fred|Junior|Ralph|Kathy/i.test(n))c-=100;return c}
+function pickVoice(){const l=enVoices();if(VS.name){const f=l.find(v=>v.name==VS.name);if(f)return f}return l.slice().sort((a,b)=>vScore(b)-vScore(a))[0]}
+function sp(w){try{const s=window.speechSynthesis;if(!s)return;let t=typeof w=="object"?(w.r||w.f):w;
+ t=String(t).replace(/[~～〜]/g," ").replace(/\bsb\b/gi,"somebody").replace(/\bsth\b/gi,"something").replace(/\s*\/\s*/g,", ").replace(/\s+/g," ").trim();if(!t)return;
+ s.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=+VS.rate||.9;const v=pickVoice();if(v){u.voice=v;u.lang=v.lang}s.speak(u)}catch(e){}}
+function renderVoice(){const e=$("vs");if(!e)return;const l=enVoices();e.innerHTML="";const a=document.createElement("option");a.value="";a.textContent=l.length?"自動（おすすめの音声を選ぶ）":"（この端末では音声を取得できません）";e.append(a);
+ l.slice().sort((x,y)=>vScore(y)-vScore(x)).forEach(v=>{const o=document.createElement("option");o.value=v.name;o.textContent=v.name+"（"+v.lang+"）";e.append(o)});
+ e.value=VS.name;if(e.value!==VS.name)e.value="";$("vr").value=VS.rate;$("vrv").textContent=(+VS.rate).toFixed(2)+"倍"}
+$("vs").onchange=()=>{VS.name=$("vs").value;saveVS()};
+$("vr").oninput=()=>{VS.rate=+$("vr").value;$("vrv").textContent=VS.rate.toFixed(2)+"倍";saveVS()};
+$("vt").onclick=()=>sp("Hello. How are you doing today? I read a book.");
+$("spb").onclick=()=>{if(Q[pos])sp(Q[pos].w)};
+try{speechSynthesis.addEventListener("voiceschanged",renderVoice)}catch(e){}
+function spBtn(c,t){const b=document.createElement("button");b.textContent="🔊";b.style.cssText="margin-top:10px;padding:4px 14px;font-size:18px";["pointerdown","pointerup","click"].forEach(n=>b.addEventListener(n,e=>e.stopPropagation()));b.addEventListener("click",()=>sp(t));c.append(b)}
+function autoSp(){$("bOk").style.opacity=$("bNg").style.opacity=seen?1:.4;if($("auto").checked&&flipped===rev)sp(Q[pos].w)}
+function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:w.b,L=Math.max(String(w.f).length,String(w.b).length),fs=L>40?18:L>26?22:L>16?26:30;
+ c.innerHTML="";c.style.justifyContent="flex-start";c.style.minHeight="250px";
+ const m=document.createElement("div");m.style.cssText="height:100px;width:100%;display:flex;align-items:center;justify-content:center;font-size:"+fs+"px;line-height:1.35;overflow:hidden";m.textContent=flipped?back:front;c.append(m);
+ const s=document.createElement("div");s.style.cssText="width:100%;min-height:96px;display:flex;flex-direction:column;align-items:center";c.append(s);
+ const add=(t,st)=>{if(!t)return;const d=document.createElement("div");d.textContent=t;d.style.cssText=st;s.append(d)};
+ if(flipped){add(w.p,"font-size:13px;color:var(--mu);margin-top:2px");add(w.e,"font-size:15px;margin-top:12px;text-align:left;width:100%");add(w.j,"font-size:13px;color:var(--mu);margin-top:4px;text-align:left;width:100%");add(x.bk+" No."+x.n,"font-size:12px;color:var(--mu);margin-top:12px")}
+ autoSp()}
+function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:w.b,L=Math.max(String(w.f).length,String(w.b).length),fs=L>40?22:L>26?28:L>16?34:40;
+ c.innerHTML="";c.style.position="relative";c.style.height="270px";c.style.padding="0";c.style.overflow="hidden";
+ const m=document.createElement("div");m.style.cssText="position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%);max-height:120px;overflow:hidden;line-height:1.35;text-align:center;word-break:break-word;font-size:"+fs+"px";m.textContent=flipped?back:front;c.append(m);
+ if(flipped){const s=document.createElement("div");s.style.cssText="position:absolute;left:16px;right:16px;bottom:10px;max-height:90px;overflow:hidden;text-align:left";
+  const add=(t,st)=>{if(!t)return;const d=document.createElement("div");d.textContent=t;d.style.cssText=st;s.append(d)};
+  add([ipaT(w.i),w.p,x.bk+" No."+x.n].filter(Boolean).join(" ・ "),"font-size:12px;color:var(--mu);text-align:center");
+  add(w.e,"font-size:14px;margin-top:4px");add(w.j,"font-size:12px;color:var(--mu);margin-top:2px");c.append(s)}
+ autoSp()}
+let seen=false;
+function nudge(){const n=$("nudge");n.textContent="先にカードをめくって、答えを確認してください";clearTimeout(nudge.t);nudge.t=setTimeout(()=>{n.textContent=""},1800)}
+new MutationObserver(()=>$("nv").classList.toggle("hide",!$("quiz").classList.contains("hide"))).observe($("quiz"),{attributes:true,attributeFilter:["class"]});
+if(!window.claude&&!/claude/i.test(location.hostname)){window.claude={use:async n=>n=="downloads"?{save:async o=>{
+ const sa=(navigator.standalone===true)||(window.matchMedia&&matchMedia("(display-mode: standalone)").matches);
+ if(sa&&navigator.canShare&&navigator.share){const f=new File([o.data],o.filename,{type:o.data.type||"application/octet-stream"});
+  if(navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:o.filename})}catch(e){if(e&&e.name=="AbortError")throw{code:"declined"};throw e}return}}
+ const a=document.createElement("a");a.href=URL.createObjectURL(o.data);a.download=o.filename;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}}:null}}
+if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})})}
+load();all();
+</script></body></html>
