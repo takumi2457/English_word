@@ -42,6 +42,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}
 td{padding:6px 4px;border-bottom:1px solid var(--bd)}td.n{color:var(--mu);width:34px}td.k{width:24px}
 .sc{overflow-x:auto}.hide{display:none}.mu{color:var(--mu);font-size:13px}
 .st{white-space:pre-line;margin:0 0 12px}.dup{color:var(--ng)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
 </style></head>
 <body><main>
 <h1>📚 マイ単語帳</h1>
@@ -63,6 +64,7 @@ td{padding:6px 4px;border-bottom:1px solid var(--bd)}td.n{color:var(--mu);width:
    <label><input type="checkbox" id="auto" checked>英単語を自動で発音</label>
   </div>
   <button class="pri" id="start" style="width:100%">スタート</button>
+  <p class="mu" style="text-align:center;margin:8px 0 0">PC：矢印キーでボタン間を移動、Enter／Spaceで決定</p>
  </div></div>
  <div id="quiz" class="hide">
   <div class="info"><span id="cnt"></span><span><button id="spb" style="padding:4px 10px;font-size:13px">🔊 発音</button> <button id="quit" style="padding:4px 10px;font-size:13px">やめる</button></span></div>
@@ -77,6 +79,7 @@ td{padding:6px 4px;border-bottom:1px solid var(--bd)}td.n{color:var(--mu);width:
   <h2 style="margin-top:0">おつかれさまでした！</h2><p id="rtxt"></p>
   <div id="dbn" class="hide"><p class="mu" id="dtx" style="color:var(--ng)"></p><button id="dbtn" class="pri" style="width:100%;margin-bottom:12px">記録を書き出す</button></div>
   <div class="acts"><button id="again">間違えた分をもう一度</button><button class="pri" id="home">範囲選択へ</button></div>
+  <p class="mu" style="margin:10px 0 0">PC：矢印キーでボタンや「学習／管理」へ移動、Enter／Spaceで決定</p>
  </div>
 </section>
 
@@ -176,13 +179,33 @@ function endDrag(e){if(!drag)return;drag=false;if(e&&e.type=="pointerup"){dx=e.c
 cd.addEventListener("pointerup",endDrag);cd.addEventListener("pointercancel",endDrag);
 let busy=false;function fly(d,dn){if(busy)return;if(!seen){cd.classList.remove("drag");cd.style.transform="";cd.style.borderColor="";nudge();return}busy=true;sfx(d>0);preSpeak();cd.classList.remove("drag");cd.style.borderColor=d>0?"var(--ok)":"var(--ng)";cd.style.transform=dn?"translateY(520px)":"translateX("+d*500+"px) rotate("+d*25+"deg)";setTimeout(()=>{cd.classList.add("drag");busy=false;answer(d>0)},120)}
 function answer(ok){if($("quiz").classList.contains("hide"))return;const x=Q[pos];x.w.k=ok;dirty++;if(!ok)missed.push(x);save();banner();pos++;
- if(pos>=Q.length){$("quiz").classList.add("hide");$("result").classList.remove("hide");$("rtxt").textContent=Q.length+"問中 "+(Q.length-missed.length)+"問「覚えた」";$("again").classList.toggle("hide",!missed.length)}else draw()}
+ if(pos>=Q.length){$("quiz").classList.add("hide");$("result").classList.remove("hide");$("rtxt").textContent=Q.length+"問中 "+(Q.length-missed.length)+"問「覚えた」";$("again").classList.toggle("hide",!missed.length);if(kb)setTimeout(()=>{try{$("home").focus({preventScroll:true})}catch(e){}},0)}else draw()}
 $("bOk").onclick=()=>fly(1);$("bNg").onclick=()=>fly(-1);
 $("quit").onclick=()=>{$("quiz").classList.add("hide");$("setup").classList.remove("hide");refresh()};
 $("again").onclick=()=>begin(missed.slice());
 $("home").onclick=()=>{$("result").classList.add("hide");$("setup").classList.remove("hide");refresh()};
 document.addEventListener("keydown",e=>{if($("quiz").classList.contains("hide")||$("p1").classList.contains("hide"))return;
  if(e.code=="Space"){e.preventDefault();flip()}else if(e.key=="ArrowDown"){e.preventDefault();flip()}else if(e.key=="ArrowUp"){e.preventDefault();sp(Q[pos].w)}else if(e.key=="ArrowRight")fly(1);else if(e.key=="ArrowLeft")fly(-1)});
+let kb=false;
+addEventListener("pointerdown",()=>{kb=false},true);
+addEventListener("keydown",()=>{kb=true},true);
+const TXTIN=el=>el.tagName=="INPUT"&&["text","search","email","url","tel","password"].includes((el.type||"").toLowerCase());
+const navList=()=>[...document.querySelectorAll("button,input,select,textarea")].filter(el=>!el.disabled&&el.type!="hidden"&&el.getClientRects().length);
+document.addEventListener("keydown",e=>{
+ const dir={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];if(!dir)return;
+ if(e.altKey||e.metaKey||e.shiftKey||e.defaultPrevented)return;
+ if(!$("p1").classList.contains("hide")&&!$("quiz").classList.contains("hide"))return;
+ const a=document.activeElement,list=navList(),onEl=!!a&&list.includes(a);
+ if(onEl&&!e.ctrlKey){if(a.tagName=="TEXTAREA")return;if(a.type=="range"&&dir[1]==0)return;
+  if(TXTIN(a)&&dir[1]==0){const st=a.selectionStart,en=a.selectionEnd,L=a.value.length;if(dir[0]<0?!(st===0&&en===0):!(st===L&&en===L))return}}
+ if(!onEl){const t=!$("p2").classList.contains("hide")?$("t2"):!$("result").classList.contains("hide")?$("home"):$("start");e.preventDefault();t.focus();return}
+ const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let best=null,bs=1e9;
+ const ov=(a1,a2,b1,b2)=>Math.max(0,b1-a2,a1-b2);
+ for(const el of list){if(el===a)continue;const q=el.getBoundingClientRect(),x=q.left+q.width/2-cx,y=q.top+q.height/2-cy,p=x*dir[0]+y*dir[1];if(p<=2)continue;
+  let gap,off;if(dir[0]){gap=dir[0]>0?q.left-r.right:r.left-q.right;off=ov(r.top,r.bottom,q.top,q.bottom)}else{gap=dir[1]>0?q.top-r.bottom:r.top-q.bottom;off=ov(r.left,r.right,q.left,q.right)}
+  const sc=Math.max(0,gap)+off*3+p*.1;if(sc<bs){bs=sc;best=el}}
+ if(best){e.preventDefault();best.focus()}
+});
 
 function twice(id,fn){const b=$(id),t=b.textContent;let on=false,h;b.onclick=()=>{if(on){clearTimeout(h);on=false;b.textContent=t;fn()}else{on=true;b.textContent="もう一度押して確定";h=setTimeout(()=>{on=false;b.textContent=t},3000)}}}
 function renderList(){const t=$("list");t.innerHTML="";const cnt={};W().forEach(w=>{const k=norm(w.f);cnt[k]=(cnt[k]||0)+1});
