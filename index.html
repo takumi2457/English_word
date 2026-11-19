@@ -339,14 +339,16 @@ function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:
  c.innerHTML="";c.style.justifyContent="flex-start";c.style.minHeight="250px";
  const m=document.createElement("div");m.style.cssText="height:100px;width:100%;display:flex;align-items:center;justify-content:center;font-size:"+fs+"px;line-height:1.35;overflow:hidden";m.textContent=flipped?back:front;c.append(m);
  const s=document.createElement("div");s.style.cssText="width:100%;min-height:96px;display:flex;flex-direction:column;align-items:center";c.append(s);
- const add=(t,st)=>{if(!t)return;const d=document.createElement("div");d.textContent=t;d.style.cssText=st;s.append(d)};
+ const add=(t,st)=>{if(!t)return;const d=document.createElement("div");d.textContent=t;d.style.cssText=st;d.style.whiteSpace="pre-line";s.append(d)};
  if(flipped){add(w.p,"font-size:13px;color:var(--mu);margin-top:2px");add(w.e,"font-size:15px;margin-top:12px;text-align:left;width:100%");add(w.j,"font-size:13px;color:var(--mu);margin-top:4px;text-align:left;width:100%");add(x.bk+" No."+x.n,"font-size:12px;color:var(--mu);margin-top:12px")}
  autoSp()}
-function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:w.b,sh=String(flipped?back:front),U=[...sh].reduce((a,c)=>a+(c.charCodeAt(0)>255?2:1),0),fs=U>104?18:U>60?22:U>34?28:U>14?34:40;
+function fitFs(t,cw){const avail=Math.max(120,(cw||300)-36),segs=String(t).split("\n");
+ for(const f of[40,34,28,22,18,15]){const maxL=Math.floor(120/(f*1.35));let L=0;for(const sg of segs){let wd=0;for(const ch of sg)wd+=(ch.charCodeAt(0)>255?1:.55)*f;L+=Math.max(1,Math.ceil(wd*1.08/avail))}if(L<=maxL)return f}return 15}
+function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:w.b,sh=String(flipped?back:front),fs=fitFs(sh,c.clientWidth);
  c.innerHTML="";c.style.position="relative";c.style.height="270px";c.style.padding="0";c.style.overflow="hidden";
- const m=document.createElement("div");m.style.cssText="position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%);max-height:120px;overflow:hidden;line-height:1.35;text-align:center;word-break:break-word;font-size:"+fs+"px";m.textContent=flipped?back:front;c.append(m);
+ const m=document.createElement("div");m.style.cssText="position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%);max-height:120px;overflow:hidden;line-height:1.35;text-align:center;word-break:break-word;white-space:pre-line;font-size:"+fs+"px";m.textContent=flipped?back:front;c.append(m);
  if(flipped){const s=document.createElement("div");s.style.cssText="position:absolute;left:16px;right:16px;bottom:10px;max-height:90px;overflow:hidden;text-align:left";
-  const add=(t,st)=>{if(!t)return;const d=document.createElement("div");d.textContent=t;d.style.cssText=st;s.append(d)};
+  const add=(t,st)=>{if(!t)return;const d=document.createElement("div");d.textContent=t;d.style.cssText=st;d.style.whiteSpace="pre-line";s.append(d)};
   add([ipaT(w.i),w.p,x.bk+" No."+x.n].filter(Boolean).join(" ・ "),"font-size:12px;color:var(--mu);text-align:center");
   add(w.e,"font-size:14px;margin-top:4px");add(w.j,"font-size:12px;color:var(--mu);margin-top:2px");c.append(s)}
  autoSp()}
