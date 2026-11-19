@@ -342,7 +342,7 @@ function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:
  const add=(t,st)=>{if(!t)return;const d=document.createElement("div");d.textContent=t;d.style.cssText=st;s.append(d)};
  if(flipped){add(w.p,"font-size:13px;color:var(--mu);margin-top:2px");add(w.e,"font-size:15px;margin-top:12px;text-align:left;width:100%");add(w.j,"font-size:13px;color:var(--mu);margin-top:4px;text-align:left;width:100%");add(x.bk+" No."+x.n,"font-size:12px;color:var(--mu);margin-top:12px")}
  autoSp()}
-function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:w.b,L=Math.max(String(w.f).length,String(w.b).length),fs=L>40?22:L>26?28:L>16?34:40;
+function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:w.b,sh=String(flipped?back:front),U=[...sh].reduce((a,c)=>a+(c.charCodeAt(0)>255?2:1),0),fs=U>104?18:U>60?22:U>34?28:U>14?34:40;
  c.innerHTML="";c.style.position="relative";c.style.height="270px";c.style.padding="0";c.style.overflow="hidden";
  const m=document.createElement("div");m.style.cssText="position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%);max-height:120px;overflow:hidden;line-height:1.35;text-align:center;word-break:break-word;font-size:"+fs+"px";m.textContent=flipped?back:front;c.append(m);
  if(flipped){const s=document.createElement("div");s.style.cssText="position:absolute;left:16px;right:16px;bottom:10px;max-height:90px;overflow:hidden;text-align:left";
