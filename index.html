@@ -80,6 +80,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   <div id="dbn" class="hide"><p class="mu" id="dtx" style="color:var(--ng)"></p><button id="dbtn" class="pri" style="width:100%;margin-bottom:12px">記録を書き出す</button></div>
   <div class="acts"><button id="again">間違えた分をもう一度</button><button class="pri" id="home">範囲選択へ</button></div>
   <p class="mu" style="margin:10px 0 0">PC：矢印キーでボタンや「学習／管理」へ移動、Enter／Spaceで決定</p>
+  <div id="mlist" class="hide" style="margin-top:16px;text-align:left"></div>
  </div>
 </section>
 
@@ -160,7 +161,7 @@ $("bk").onchange=()=>{cur=+$("bk").value;save();all()};
 function show(t){$("p1").classList.toggle("hide",t!=1);$("p2").classList.toggle("hide",t!=2);$("t1").classList.toggle("on",t==1);$("t2").classList.toggle("on",t==2);all()}
 $("t1").onclick=()=>show(1);$("t2").onclick=()=>show(2);
 
-function begin(idx){preSp=null;if(!idx.length){$("total").textContent="出題できる単語がありません。範囲や条件を変えてください。";return}
+function begin(idx,isRetry){preSp=null;retry=!!isRetry;if(!idx.length){$("total").textContent="出題できる単語がありません。範囲や条件を変えてください。";return}
  Q=idx.slice();pos=0;missed=[];$("setup").classList.add("hide");$("result").classList.add("hide");$("quiz").classList.remove("hide");draw()}
 $("start").onclick=()=>{const w=pool();const a=Math.max(1,+$("from").value||1),b=Math.min(w.length,+$("to").value||w.length);rev=$("rev").checked;
  let idx=[];for(let i=a-1;i<b;i++)if(!$("only").checked||!w[i].w.k)idx.push(w[i]);
@@ -178,11 +179,11 @@ cd.addEventListener("pointermove",e=>{if(!drag)return;dx=e.clientX-sx;dy=e.clien
 function endDrag(e){if(!drag)return;drag=false;if(e&&e.type=="pointerup"){dx=e.clientX-sx;dy=e.clientY-sy}const fl=Math.hypot(dx,dy)/Math.max(1,Date.now()-t0)>.35;if(dx>60||(fl&&dx>25))fly(1);else if(dx<-60||(fl&&dx<-25))fly(-1);else{cd.classList.remove("drag");cd.style.transform="";cd.style.borderColor="";if(!moved)flip()}}
 cd.addEventListener("pointerup",endDrag);cd.addEventListener("pointercancel",endDrag);
 let busy=false;function fly(d,dn){if(busy)return;if(!seen){cd.classList.remove("drag");cd.style.transform="";cd.style.borderColor="";nudge();return}busy=true;sfx(d>0);preSpeak();cd.classList.remove("drag");cd.style.borderColor=d>0?"var(--ok)":"var(--ng)";cd.style.transform=dn?"translateY(520px)":"translateX("+d*500+"px) rotate("+d*25+"deg)";setTimeout(()=>{cd.classList.add("drag");busy=false;answer(d>0)},120)}
-function answer(ok){if($("quiz").classList.contains("hide"))return;const x=Q[pos];x.w.k=ok;dirty++;if(!ok)missed.push(x);save();banner();pos++;
- if(pos>=Q.length){$("quiz").classList.add("hide");$("result").classList.remove("hide");$("rtxt").textContent=Q.length+"問中 "+(Q.length-missed.length)+"問「覚えた」";$("again").classList.toggle("hide",!missed.length);if(kb)setTimeout(()=>{try{$("home").focus({preventScroll:true})}catch(e){}},0)}else draw()}
+function answer(ok){if($("quiz").classList.contains("hide"))return;const x=Q[pos];if(!retry){x.w.k=ok;dirty++}if(!ok)missed.push(x);save();banner();pos++;
+ if(pos>=Q.length){$("quiz").classList.add("hide");$("result").classList.remove("hide");$("rtxt").textContent=retry?Q.length+"問中 "+(Q.length-missed.length)+"問できました。復習なので「覚えた」の記録は変わりません。":Q.length+"問中 "+(Q.length-missed.length)+"問「覚えた」";renderMissed();$("again").classList.toggle("hide",!missed.length);if(kb)setTimeout(()=>{try{$("home").focus({preventScroll:true})}catch(e){}},0)}else draw()}
 $("bOk").onclick=()=>fly(1);$("bNg").onclick=()=>fly(-1);
 $("quit").onclick=()=>{$("quiz").classList.add("hide");$("setup").classList.remove("hide");refresh()};
-$("again").onclick=()=>begin(missed.slice());
+$("again").onclick=()=>begin(missed.slice(),true);
 $("home").onclick=()=>{$("result").classList.add("hide");$("setup").classList.remove("hide");refresh()};
 document.addEventListener("keydown",e=>{if($("quiz").classList.contains("hide")||$("p1").classList.contains("hide"))return;
  if(e.code=="Space"){e.preventDefault();flip()}else if(e.key=="ArrowDown"){e.preventDefault();flip()}else if(e.key=="ArrowUp"){e.preventDefault();sp(Q[pos].w)}else if(e.key=="ArrowRight")fly(1);else if(e.key=="ArrowLeft")fly(-1)});
@@ -340,6 +341,16 @@ $("fxo").onclick=()=>sfx(true);$("fxn").onclick=()=>sfx(false);
 if(FX.style=="custom")loadCustom();
 let preSp=null;
 function preSpeak(){preSp=null;if(!$("auto").checked||rev||pos+1>=Q.length)return;preSp=Q[pos+1];sp(preSp.w)}
+let retry=false;
+function renderMissed(){const e=$("mlist");e.innerHTML="";if(!missed.length){e.classList.add("hide");return}e.classList.remove("hide");
+ const h=document.createElement("div");h.style.cssText="font-weight:600;margin-bottom:6px";h.textContent="間違えた単語（"+missed.length+"語）";e.append(h);
+ const t=document.createElement("table");t.style.cssText="width:100%;border-collapse:collapse";
+ missed.forEach(x=>{const w=x.w,r=t.insertRow();r.style.borderTop="1px solid var(--bd)";
+  const c1=r.insertCell();c1.style.cssText="padding:8px 6px 8px 0;width:34%;vertical-align:top;font-weight:600;word-break:break-word";c1.textContent=w.f;
+  if(w.i){const d=document.createElement("div");d.style.cssText="font-weight:400;font-size:12px;color:var(--mu)";d.textContent=ipaT(w.i);c1.append(d)}
+  const c2=r.insertCell();c2.style.cssText="padding:8px 6px;vertical-align:top;white-space:pre-line;word-break:keep-all;overflow-wrap:anywhere;font-size:14px";c2.textContent=brk(w.b);
+  const c3=r.insertCell();c3.style.cssText="padding:8px 0 8px 6px;vertical-align:top;width:1%";const b=document.createElement("button");b.textContent="🔊";b.style.padding="4px 10px";b.onclick=()=>sp(w);c3.append(b)});
+ e.append(t)}
 let vSig=null;
 function renderVoice(force){const e=$("vs");if(!e)return;const l=enVoices(),sig=l.map(v=>v.name).join("|");
  $("vcnt").textContent=l.length?"この端末で見つかった英語の音声："+l.length+"件":"英語の音声が見つかりません。端末の設定で音声をダウンロードしてから、「音声リストを更新」を押してください。";
@@ -365,11 +376,17 @@ function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:
  const add=(t,st)=>{if(!t)return;const d=document.createElement("div");d.textContent=t;d.style.cssText=st;d.style.whiteSpace="pre-line";s.append(d)};
  if(flipped){add(w.p,"font-size:13px;color:var(--mu);margin-top:2px");add(w.e,"font-size:15px;margin-top:12px;text-align:left;width:100%");add(w.j,"font-size:13px;color:var(--mu);margin-top:4px;text-align:left;width:100%");add(x.bk+" No."+x.n,"font-size:12px;color:var(--mu);margin-top:12px")}
  autoSp()}
+function brk(t){return String(t).replace(/([・、；;／])/g,"$1\u200B").replace(/([〜～])/g,"\u200B$1\u2060")}
 function fitFs(t,cw){const avail=Math.max(120,(cw||300)-36),segs=String(t).split("\n");
- for(const f of[40,34,28,22,18,15]){const maxL=Math.floor(120/(f*1.35));let L=0;for(const sg of segs){let wd=0;for(const ch of sg)wd+=(ch.charCodeAt(0)>255?1:.55)*f;L+=Math.max(1,Math.ceil(wd*1.08/avail))}if(L<=maxL)return f}return 15}
-function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:w.b,sh=String(flipped?back:front),fs=fitFs(sh,c.clientWidth);
+ for(const f of[40,34,28,22,18,15]){const maxL=Math.floor(120/(f*1.35));let L=0;
+  for(const sg of segs){let cur=0,n=1;for(const tk of sg.split("\u200B")){let tw=0;for(const ch of tk){if(ch==="\u2060")continue;tw+=(ch.charCodeAt(0)>255?1:.55)*f}tw*=1.04;
+    if(cur>0&&cur+tw>avail){n++;cur=0}
+    if(tw>avail){n+=Math.ceil(tw/avail)-1;cur=tw%avail}else cur+=tw}
+   L+=n}
+  if(L<=maxL)return f}return 15}
+function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:w.b,im=flipped!==rev,dt=String(flipped?back:front),sh=im?brk(dt):dt,fs=fitFs(sh,c.clientWidth);
  c.innerHTML="";c.style.position="relative";c.style.height="270px";c.style.padding="0";c.style.overflow="hidden";
- const m=document.createElement("div");m.style.cssText="position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%);max-height:120px;overflow:hidden;line-height:1.35;text-align:center;word-break:break-word;white-space:pre-line;font-size:"+fs+"px";m.textContent=flipped?back:front;c.append(m);
+ const m=document.createElement("div");m.style.cssText="position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%);max-height:120px;overflow:hidden;line-height:1.35;text-align:center;"+(im?"word-break:keep-all;overflow-wrap:anywhere;":"word-break:break-word;")+"white-space:pre-line;font-size:"+fs+"px";m.textContent=sh;c.append(m);
  if(flipped){const s=document.createElement("div");s.style.cssText="position:absolute;left:16px;right:16px;bottom:10px;max-height:90px;overflow:hidden;text-align:left";
   const add=(t,st)=>{if(!t)return;const d=document.createElement("div");d.textContent=t;d.style.cssText=st;d.style.whiteSpace="pre-line";s.append(d)};
   add([ipaT(w.i),w.p,x.bk+" No."+x.n].filter(Boolean).join(" ・ "),"font-size:12px;color:var(--mu);text-align:center");
