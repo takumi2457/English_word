@@ -42,13 +42,14 @@ table{width:100%;border-collapse:collapse;font-size:14px}
 td{padding:6px 4px;border-bottom:1px solid var(--bd)}td.n{color:var(--mu);width:34px}td.k{width:24px}
 .sc{overflow-x:auto}.hide{display:none}.mu{color:var(--mu);font-size:13px}
 .st{white-space:pre-line;margin:0 0 12px}.dup{color:var(--ng)}
+button:disabled{opacity:.3;cursor:default}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
 </style></head>
 <body><main>
 <h1>📚 マイ単語帳</h1>
 
 
-<nav id="nv"><button id="t1" class="on">学習</button><button id="t2">管理</button></nav>
+<nav id="nv"><button id="t1" class="on">学習</button><button id="t2">管理</button><button id="t3">索引</button></nav>
 
 <section id="p1">
  <div id="setup"><div class="box"><label>出題する単語帳（複数選択できます）</label><div id="sel" class="chk"></div>
@@ -140,6 +141,20 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   <div class="sc"><table id="list"></table></div>
  </div>
 </section>
+
+<section id="p3" class="hide">
+ <div class="box">
+  <input type="text" id="ix" placeholder="英単語・意味で検索" autocomplete="off">
+  <div class="row" style="margin-top:10px">
+   <div><label>範囲</label><select id="ixs"></select></div>
+   <div><label>並び順</label><select id="ixo"><option value="no">番号順</option><option value="abc">ABC順</option></select></div>
+   <div><label>表示</label><select id="ixf"><option value="all">すべて</option><option value="ok">覚えた</option><option value="ng">まだ</option></select></div>
+  </div>
+  <div id="ixaz" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:12px"></div>
+  <p class="mu" id="ixc" style="margin:10px 0 0"></p>
+ </div>
+ <div class="box" style="padding:6px 10px"><div class="sc"><table id="ixt"></table></div></div>
+</section>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
@@ -157,10 +172,10 @@ function renderBooks(){const s=$("bk");s.innerHTML="";books.forEach((b,i)=>{cons
 function pool(){const p=[];books.forEach((b,bi)=>{if(sel.has(bi))b.words.forEach((w,i)=>p.push({w,n:i+1,bk:b.name}))});return p}
 function renderSel(){const d=$("sel");d.innerHTML="";books.forEach((b,i)=>{const l=document.createElement("label"),c=document.createElement("input");c.type="checkbox";c.checked=sel.has(i);c.onchange=()=>{if(c.checked)sel.add(i);else sel.delete(i);if(!sel.size){sel.add(i);c.checked=true}save();$("from").value=1;$("to").value=pool().length||1;refresh()};l.append(c,b.name+"（"+b.words.length+"）");d.append(l)})}
 function refresh(){const p=pool(),n=p.length;$("total").textContent="選択中："+n+"語（覚えた："+p.filter(x=>x.w.k).length+"語）";if(!(+$("to").value>=1)||+$("to").value>n)$("to").value=n||1}
-function all(){renderBooks();renderSel();renderRk();banner();refresh();renderList();renderVoice()}
+function all(){renderBooks();renderSel();renderRk();banner();refresh();renderList();renderVoice();if(!$("p3").classList.contains("hide"))renderIndex()}
 $("bk").onchange=()=>{cur=+$("bk").value;save();all()};
-function show(t){$("p1").classList.toggle("hide",t!=1);$("p2").classList.toggle("hide",t!=2);$("t1").classList.toggle("on",t==1);$("t2").classList.toggle("on",t==2);all()}
-$("t1").onclick=()=>show(1);$("t2").onclick=()=>show(2);
+function show(t){$("p1").classList.toggle("hide",t!=1);$("p2").classList.toggle("hide",t!=2);$("p3").classList.toggle("hide",t!=3);$("t1").classList.toggle("on",t==1);$("t2").classList.toggle("on",t==2);$("t3").classList.toggle("on",t==3);all()}
+$("t1").onclick=()=>show(1);$("t2").onclick=()=>show(2);$("t3").onclick=()=>show(3);
 
 function begin(idx,isRetry){preSp=null;retry=!!isRetry;prac=$("prac").checked;noRec=retry||prac;if(!idx.length){$("total").textContent="出題できる単語がありません。範囲や条件を変えてください。";return}
  Q=idx.slice();pos=0;missed=[];$("setup").classList.add("hide");$("result").classList.add("hide");$("quiz").classList.remove("hide");draw()}
@@ -213,7 +228,7 @@ document.addEventListener("keydown",e=>{
  const a=document.activeElement,list=navList(),onEl=!!a&&list.includes(a);
  if(onEl&&!e.ctrlKey){if(a.tagName=="TEXTAREA")return;if(a.type=="range"&&dir[1]==0)return;
   if(TXTIN(a)&&dir[1]==0){const st=a.selectionStart,en=a.selectionEnd,L=a.value.length;if(dir[0]<0?!(st===0&&en===0):!(st===L&&en===L))return}}
- if(!onEl){const t=!$("p2").classList.contains("hide")?$("t2"):!$("result").classList.contains("hide")?$("home"):$("start");e.preventDefault();t.focus();return}
+ if(!onEl){const t=!$("p3").classList.contains("hide")?$("t3"):!$("p2").classList.contains("hide")?$("t2"):!$("result").classList.contains("hide")?$("home"):$("start");e.preventDefault();t.focus();return}
  const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let best=null,bs=1e9;
  const ov=(a1,a2,b1,b2)=>Math.max(0,b1-a2,a1-b2);
  for(const el of list){if(el===a)continue;const q=el.getBoundingClientRect(),x=q.left+q.width/2-cx,y=q.top+q.height/2-cy,p=x*dir[0]+y*dir[1];if(p<=2)continue;
@@ -365,6 +380,36 @@ function renderMissed(){const e=$("mlist");e.innerHTML="";if(!missed.length){e.c
   const c2=r.insertCell();c2.style.cssText="padding:8px 6px;vertical-align:top;white-space:pre-line;word-break:keep-all;overflow-wrap:anywhere;font-size:14px";c2.textContent=brk(w.b);
   const c3=r.insertCell();c3.style.cssText="padding:8px 0 8px 6px;vertical-align:top;width:1%";const b=document.createElement("button");b.textContent="🔊";b.style.padding="4px 10px";b.onclick=()=>sp(w);c3.append(b)});
  e.append(t)}
+let ixB=null,ixTm=null;
+const ixKey=f=>String(f).toLowerCase().replace(/^[^a-z0-9]+/,"");
+const ixLetter=f=>{const c=ixKey(f).charAt(0);return/[a-z]/.test(c)?c.toUpperCase():"#"};
+function ixItems(){const q=$("ix").value.trim().toLowerCase(),f=$("ixf").value,bs=ixB===-1?books.map((b,i)=>i):[ixB];let a=[],total=0;
+ bs.forEach(bi=>books[bi].words.forEach((w,i)=>{total++;a.push({w,n:i+1,bk:books[bi].name,bi})}));
+ if(q)a=a.filter(x=>String(x.w.f).toLowerCase().includes(q)||String(x.w.b).toLowerCase().includes(q));
+ if(f=="ok")a=a.filter(x=>x.w.k);else if(f=="ng")a=a.filter(x=>!x.w.k);
+ if($("ixo").value=="abc")a.sort((x,y)=>ixKey(x.w.f).localeCompare(ixKey(y.w.f),"en")||x.bi-y.bi||x.n-y.n);
+ return{a,total}}
+function renderIndex(){const sb=$("ixs");
+ if(sb.options.length!==books.length+1||[...sb.options].some((o,i)=>i>0&&o.textContent!==books[i-1].name)){sb.innerHTML="";const o0=document.createElement("option");o0.value=-1;o0.textContent="すべての単語帳";sb.append(o0);books.forEach((b,i)=>{const o=document.createElement("option");o.value=i;o.textContent=b.name;sb.append(o)})}
+ if(ixB===null||(ixB!==-1&&!books[ixB]))ixB=cur;sb.value=ixB;
+ const{a:items,total}=ixItems(),abc=$("ixo").value=="abc",allB=ixB===-1,t=$("ixt");t.innerHTML="";
+ const first={};let lastBk=null,lastL=null;
+ const hdr=txt=>{const r=t.insertRow(),c=r.insertCell();c.colSpan=5;c.style.cssText="background:var(--bg);font-weight:600;padding:4px 6px;color:var(--mu)";c.textContent=txt;return r};
+ if(!items.length){const r=t.insertRow(),c=r.insertCell();c.colSpan=5;c.style.cssText="padding:14px;text-align:center;color:var(--mu)";c.textContent="該当する単語がありません"}
+ items.forEach(x=>{const w=x.w,L=ixLetter(w.f);
+  if(abc){if(L!==lastL){const h=hdr(L);if(!(L in first))first[L]=h;lastL=L}}
+  else if(allB&&x.bk!==lastBk){const h=hdr("📒 "+x.bk);lastBk=x.bk;if(!(L in first))first[L]=h}
+  const r=t.insertRow();if(!(L in first))first[L]=r;
+  const c0=r.insertCell();c0.className="n";c0.textContent=x.n;
+  const c1=r.insertCell();c1.style.cssText="word-break:normal;overflow-wrap:normal;padding-right:8px";const b=document.createElement("div");b.style.fontWeight="600";b.textContent=w.f;c1.append(b);
+  const sub=[ipaT(w.i),w.p,abc&&allB?x.bk:""].filter(Boolean).join(" ・ ");if(sub){const d=document.createElement("div");d.className="mu";d.style.fontSize="12px";d.textContent=sub;c1.append(d)}
+  const c2=r.insertCell();c2.style.cssText="white-space:pre-line;word-break:keep-all;overflow-wrap:anywhere";c2.textContent=brk(w.b);
+  const c3=r.insertCell();c3.className="k";c3.textContent=w.k?"✅":"";
+  const c4=r.insertCell();c4.style.whiteSpace="nowrap";const sbn=document.createElement("button");sbn.textContent="🔊";sbn.style.padding="2px 8px";sbn.onclick=()=>sp(w);c4.append(sbn)});
+ const az=$("ixaz");az.innerHTML="";for(const L of"ABCDEFGHIJKLMNOPQRSTUVWXYZ"){const b=document.createElement("button");b.textContent=L;b.style.cssText="padding:3px 0;font-size:12px;min-width:26px";b.disabled=!first[L];b.onclick=()=>{if(first[L])first[L].scrollIntoView({behavior:"smooth",block:"start"})};az.append(b)}
+ $("ixc").textContent=items.length+"語"+(items.length!==total?"（全"+total+"語中）":"")+"　"+(abc?"ABC順で表示しています。":"番号順＝Excelの並び（単語帳に入っている順）です。")}
+$("ix").oninput=()=>{clearTimeout(ixTm);ixTm=setTimeout(renderIndex,120)};
+$("ixs").onchange=()=>{ixB=+$("ixs").value;renderIndex()};$("ixo").onchange=renderIndex;$("ixf").onchange=renderIndex;
 let vSig=null;
 function renderVoice(force){const e=$("vs");if(!e)return;const l=enVoices(),sig=l.map(v=>v.name).join("|");
  $("vcnt").textContent=l.length?"この端末で見つかった英語の音声："+l.length+"件":"英語の音声が見つかりません。端末の設定で音声をダウンロードしてから、「音声リストを更新」を押してください。";
