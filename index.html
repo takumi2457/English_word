@@ -62,6 +62,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
    <label><input type="checkbox" id="only">まだ覚えていないものだけ</label>
    <label><input type="checkbox" id="rev">意味から出題</label>
    <label><input type="checkbox" id="auto" checked>英単語を自動で発音</label>
+   <label><input type="checkbox" id="prac">練習モード（記録しない）</label>
   </div>
   <button class="pri" id="start" style="width:100%">スタート</button>
   <p class="mu" style="text-align:center;margin:8px 0 0">PC：矢印キーでボタン間を移動、Enter／Spaceで決定</p>
@@ -161,14 +162,14 @@ $("bk").onchange=()=>{cur=+$("bk").value;save();all()};
 function show(t){$("p1").classList.toggle("hide",t!=1);$("p2").classList.toggle("hide",t!=2);$("t1").classList.toggle("on",t==1);$("t2").classList.toggle("on",t==2);all()}
 $("t1").onclick=()=>show(1);$("t2").onclick=()=>show(2);
 
-function begin(idx,isRetry){preSp=null;retry=!!isRetry;if(!idx.length){$("total").textContent="出題できる単語がありません。範囲や条件を変えてください。";return}
+function begin(idx,isRetry){preSp=null;retry=!!isRetry;prac=$("prac").checked;noRec=retry||prac;if(!idx.length){$("total").textContent="出題できる単語がありません。範囲や条件を変えてください。";return}
  Q=idx.slice();pos=0;missed=[];$("setup").classList.add("hide");$("result").classList.add("hide");$("quiz").classList.remove("hide");draw()}
 $("start").onclick=()=>{const w=pool();const a=Math.max(1,+$("from").value||1),b=Math.min(w.length,+$("to").value||w.length);rev=$("rev").checked;
  let idx=[];for(let i=a-1;i<b;i++)if(!$("only").checked||!w[i].w.k)idx.push(w[i]);
  if($("shuf").checked)idx.sort(()=>Math.random()-.5);begin(idx)};
 function draw(){flipped=false;seen=false;const c=$("card");c.classList.remove("back");c.style.transform="";c.style.borderColor="";
  face();
- $("cnt").textContent=(pos+1)+" / "+Q.length;$("pg").style.width=(pos/Q.length*100)+"%"}
+ $("cnt").textContent=(pos+1)+" / "+Q.length+(prac?"（練習モード）":"");$("pg").style.width=(pos/Q.length*100)+"%"}
 function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:w.b;c.innerHTML="";const add=(t,st)=>{if(!t)return;const d=document.createElement("div");d.textContent=t;if(st)d.style.cssText=st;c.append(d)};
  if(!flipped){add(front)}
  else{add(back);add(w.p,"font-size:13px;color:var(--mu);margin-top:6px");add(w.e,"font-size:15px;margin-top:16px;text-align:left;width:100%");add(w.j,"font-size:13px;color:var(--mu);margin-top:4px;text-align:left;width:100%");add(x.bk+" No."+x.n,"font-size:12px;color:var(--mu);margin-top:14px")}autoSp()}
@@ -179,8 +180,8 @@ cd.addEventListener("pointermove",e=>{if(!drag)return;dx=e.clientX-sx;dy=e.clien
 function endDrag(e){if(!drag)return;drag=false;if(e&&e.type=="pointerup"){dx=e.clientX-sx;dy=e.clientY-sy}const fl=Math.hypot(dx,dy)/Math.max(1,Date.now()-t0)>.35;if(dx>60||(fl&&dx>25))fly(1);else if(dx<-60||(fl&&dx<-25))fly(-1);else{cd.classList.remove("drag");cd.style.transform="";cd.style.borderColor="";if(!moved)flip()}}
 cd.addEventListener("pointerup",endDrag);cd.addEventListener("pointercancel",endDrag);
 let busy=false;function fly(d,dn){if(busy)return;if(!seen){cd.classList.remove("drag");cd.style.transform="";cd.style.borderColor="";nudge();return}busy=true;sfx(d>0);preSpeak();cd.classList.remove("drag");cd.style.borderColor=d>0?"var(--ok)":"var(--ng)";cd.style.transform=dn?"translateY(520px)":"translateX("+d*500+"px) rotate("+d*25+"deg)";setTimeout(()=>{cd.classList.add("drag");busy=false;answer(d>0)},120)}
-function answer(ok){if($("quiz").classList.contains("hide"))return;const x=Q[pos];if(!retry){x.w.k=ok;dirty++}if(!ok)missed.push(x);save();banner();pos++;
- if(pos>=Q.length){$("quiz").classList.add("hide");$("result").classList.remove("hide");$("rtxt").textContent=retry?Q.length+"問中 "+(Q.length-missed.length)+"問できました。復習なので「覚えた」の記録は変わりません。":Q.length+"問中 "+(Q.length-missed.length)+"問「覚えた」";renderMissed();$("again").classList.toggle("hide",!missed.length);if(kb)setTimeout(()=>{try{$("home").focus({preventScroll:true})}catch(e){}},0)}else draw()}
+function answer(ok){if($("quiz").classList.contains("hide"))return;const x=Q[pos];if(!noRec){x.w.k=ok;dirty++}if(!ok)missed.push(x);save();banner();pos++;
+ if(pos>=Q.length){$("quiz").classList.add("hide");$("result").classList.remove("hide");$("rtxt").textContent=prac?Q.length+"問中 "+(Q.length-missed.length)+"問できました。練習モードなので、記録は変わりません。":retry?Q.length+"問中 "+(Q.length-missed.length)+"問できました。復習なので「覚えた」の記録は変わりません。":Q.length+"問中 "+(Q.length-missed.length)+"問「覚えた」";renderMissed();$("again").classList.toggle("hide",!missed.length);if(kb)setTimeout(()=>{try{$("home").focus({preventScroll:true})}catch(e){}},0)}else draw()}
 $("bOk").onclick=()=>fly(1);$("bNg").onclick=()=>fly(-1);
 $("quit").onclick=()=>{$("quiz").classList.add("hide");$("setup").classList.remove("hide");refresh()};
 $("again").onclick=()=>begin(missed.slice(),true);
@@ -354,7 +355,7 @@ $("fxo").onclick=()=>sfx(true);$("fxn").onclick=()=>sfx(false);
 if(FX.style=="custom")loadCustom();
 let preSp=null;
 function preSpeak(){preSp=null;if(!$("auto").checked||rev||pos+1>=Q.length)return;preSp=Q[pos+1];sp(preSp.w)}
-let retry=false;
+let retry=false,prac=false,noRec=false;
 function renderMissed(){const e=$("mlist");e.innerHTML="";if(!missed.length){e.classList.add("hide");return}e.classList.remove("hide");
  const h=document.createElement("div");h.style.cssText="font-weight:600;margin-bottom:6px";h.textContent="間違えた単語（"+missed.length+"語）";e.append(h);
  const t=document.createElement("table");t.style.cssText="width:100%;border-collapse:collapse";
