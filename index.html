@@ -52,7 +52,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 <nav id="nv"><button id="t1" class="on">学習</button><button id="t2">管理</button><button id="t3">索引</button></nav>
 
 <section id="p1">
- <div id="setup"><div class="box"><label>出題する単語帳（複数選択できます）</label><div id="sel" class="chk"></div>
+ <div id="setup"><div class="box hide" id="rsm"><p id="rsmt" style="margin:0 0 10px"></p><div class="acts"><button class="pri" id="rsb">続きから再開</button><button id="rsd">破棄</button></div></div><div class="box"><label>出題する単語帳（複数選択できます）</label><div id="sel" class="chk"></div>
   <div class="row">
    <div><label>開始番号</label><input type="number" id="from" min="1" value="1"></div>
    <div><label>終了番号</label><input type="number" id="to" min="1" value="10"></div>
@@ -69,7 +69,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   <p class="mu" style="text-align:center;margin:8px 0 0">PC：矢印キーでボタン間を移動、Enter／Spaceで決定</p>
  </div></div>
  <div id="quiz" class="hide">
-  <div class="info"><span id="cnt"></span><span><button id="spb" style="padding:4px 10px;font-size:13px">🔊 発音</button> <button id="quit" style="padding:4px 10px;font-size:13px">やめる</button></span></div>
+  <div class="info"><span id="cnt"></span><span><button id="spb" style="padding:4px 10px;font-size:13px">🔊 発音</button> <button id="quit" style="padding:4px 10px;font-size:13px">⏸ 中断</button></span></div>
   <div class="bar"><i id="pg" style="width:0"></i></div>
   <div class="box card" id="card"></div>
   <div class="acts"><button class="ng" id="bNg">✗ まだ</button><button class="ok" id="bOk">○ 覚えた</button></div>
@@ -171,7 +171,7 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify({books,cur,sel:[...s
 function renderBooks(){const s=$("bk");s.innerHTML="";books.forEach((b,i)=>{const o=document.createElement("option");o.value=i;o.textContent=b.name+"（"+b.words.length+"語）";s.append(o)});s.value=cur;$("nm").value=books[cur].name}
 function pool(){const p=[];books.forEach((b,bi)=>{if(sel.has(bi))b.words.forEach((w,i)=>p.push({w,n:i+1,bk:b.name}))});return p}
 function renderSel(){const d=$("sel");d.innerHTML="";books.forEach((b,i)=>{const l=document.createElement("label"),c=document.createElement("input");c.type="checkbox";c.checked=sel.has(i);c.onchange=()=>{if(c.checked)sel.add(i);else sel.delete(i);if(!sel.size){sel.add(i);c.checked=true}save();$("from").value=1;$("to").value=pool().length||1;refresh()};l.append(c,b.name+"（"+b.words.length+"）");d.append(l)})}
-function refresh(){const p=pool(),n=p.length;$("total").textContent="選択中："+n+"語（覚えた："+p.filter(x=>x.w.k).length+"語）";if(!(+$("to").value>=1)||+$("to").value>n)$("to").value=n||1}
+function refresh(){renderResume();const p=pool(),n=p.length;$("total").textContent="選択中："+n+"語（覚えた："+p.filter(x=>x.w.k).length+"語）";if(!(+$("to").value>=1)||+$("to").value>n)$("to").value=n||1}
 function all(){renderBooks();renderSel();renderRk();banner();refresh();renderList();renderVoice();if(!$("p3").classList.contains("hide"))renderIndex()}
 $("bk").onchange=()=>{cur=+$("bk").value;save();all()};
 function show(t){$("p1").classList.toggle("hide",t!=1);$("p2").classList.toggle("hide",t!=2);$("p3").classList.toggle("hide",t!=3);$("t1").classList.toggle("on",t==1);$("t2").classList.toggle("on",t==2);$("t3").classList.toggle("on",t==3);all()}
@@ -188,14 +188,15 @@ function draw(){flipped=false;seen=false;const c=$("card");c.classList.remove("b
 function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:w.b;c.innerHTML="";const add=(t,st)=>{if(!t)return;const d=document.createElement("div");d.textContent=t;if(st)d.style.cssText=st;c.append(d)};
  if(!flipped){add(front)}
  else{add(back);add(w.p,"font-size:13px;color:var(--mu);margin-top:6px");add(w.e,"font-size:15px;margin-top:16px;text-align:left;width:100%");add(w.j,"font-size:13px;color:var(--mu);margin-top:4px;text-align:left;width:100%");add(x.bk+" No."+x.n,"font-size:12px;color:var(--mu);margin-top:14px")}autoSp()}
-function flip(){flipped=!flipped;if(flipped)seen=true;$("card").classList.toggle("back",flipped);face()}
+let lastFlip=0,lastAns=0;
+function flip(){const n=Date.now();if(n-lastFlip<200)return;lastFlip=n;flipped=!flipped;if(flipped)seen=true;$("card").classList.toggle("back",flipped);face()}
 const cd=$("card");let sx=0,dx=0,sy=0,dy=0,t0=0,drag=false,moved=false;
 cd.addEventListener("pointerdown",e=>{drag=true;moved=false;sx=e.clientX;sy=e.clientY;dx=0;dy=0;t0=Date.now();cd.classList.add("drag");try{cd.setPointerCapture(e.pointerId)}catch(x){}});
 cd.addEventListener("pointermove",e=>{if(!drag)return;dx=e.clientX-sx;dy=e.clientY-sy;if(Math.abs(dx)>8||Math.abs(dy)>8)moved=true;cd.style.transform="translateX("+dx+"px) rotate("+dx/20+"deg)";cd.style.borderColor=dx>30?"var(--ok)":dx<-30?"var(--ng)":""});
 function endDrag(e){if(!drag)return;drag=false;if(e&&e.type=="pointerup"){dx=e.clientX-sx;dy=e.clientY-sy}const fl=Math.hypot(dx,dy)/Math.max(1,Date.now()-t0)>.35;if(dx>60||(fl&&dx>25))fly(1);else if(dx<-60||(fl&&dx<-25))fly(-1);else{cd.classList.remove("drag");cd.style.transform="";cd.style.borderColor="";if(!moved)flip()}}
 cd.addEventListener("pointerup",endDrag);cd.addEventListener("pointercancel",endDrag);
-let busy=false;function fly(d,dn){if(busy)return;if(!seen){cd.classList.remove("drag");cd.style.transform="";cd.style.borderColor="";nudge();return}busy=true;sfx(d>0);preSpeak();cd.classList.remove("drag");cd.style.borderColor=d>0?"var(--ok)":"var(--ng)";cd.style.transform=dn?"translateY(520px)":"translateX("+d*500+"px) rotate("+d*25+"deg)";setTimeout(()=>{cd.classList.add("drag");busy=false;answer(d>0)},120)}
-function answer(ok){if($("quiz").classList.contains("hide"))return;const x=Q[pos];if(!noRec){x.w.k=ok;dirty++}if(!ok)missed.push(x);save();banner();pos++;
+let busy=false;function fly(d,dn){if(busy||Date.now()-lastAns<350)return;if(!seen){cd.classList.remove("drag");cd.style.transform="";cd.style.borderColor="";nudge();return}busy=true;lastAns=Date.now();sfx(d>0);preSpeak();cd.classList.remove("drag");cd.style.borderColor=d>0?"var(--ok)":"var(--ng)";cd.style.transform=dn?"translateY(520px)":"translateX("+d*500+"px) rotate("+d*25+"deg)";setTimeout(()=>{cd.classList.add("drag");busy=false;answer(d>0)},120)}
+function answer(ok){if($("quiz").classList.contains("hide"))return;const x=Q[pos];if(!noRec){x.w.k=ok;dirty++}if(!ok)missed.push(x);save();banner();pos++;saveSess();
  if(pos>=Q.length){$("quiz").classList.add("hide");$("result").classList.remove("hide");$("rtxt").textContent=prac?Q.length+"問中 "+(Q.length-missed.length)+"問できました。練習モードなので、記録は変わりません。":retry?Q.length+"問中 "+(Q.length-missed.length)+"問できました。復習なので「覚えた」の記録は変わりません。":Q.length+"問中 "+(Q.length-missed.length)+"問「覚えた」";renderMissed();$("again").classList.toggle("hide",!missed.length);if(kb)setTimeout(()=>{try{$("home").focus({preventScroll:true})}catch(e){}},0)}else draw()}
 $("bOk").onclick=()=>fly(1);$("bNg").onclick=()=>fly(-1);
 $("quit").onclick=()=>{$("quiz").classList.add("hide");$("setup").classList.remove("hide");refresh()};
@@ -460,5 +461,20 @@ if(!window.claude&&!/claude/i.test(location.hostname)){window.claude={use:async 
   if(navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:o.filename})}catch(e){if(e&&e.name=="AbortError")throw{code:"declined"};throw e}return}}
  const a=document.createElement("a");a.href=URL.createObjectURL(o.data);a.download=o.filename;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}}:null}}
 if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})})}
+
+// ===== 中断・再開 =====
+const SK="tangocho:sess";
+const wref=x=>[x.bk,x.n,String(x.w.f)];
+function rawSess(){try{const s=JSON.parse(localStorage.getItem(SK)||"null");return s&&Array.isArray(s.q)&&s.q.length&&s.pos<s.q.length?s:null}catch(e){return null}}
+function saveSess(){try{if(!Q.length||pos>=Q.length){localStorage.removeItem(SK);return}localStorage.setItem(SK,JSON.stringify({q:Q.map(wref),pos,missed:missed.map(wref),rev,prac,retry,ts:Date.now()}))}catch(e){}}
+function findW(r){const b=books.find(b=>b.name==r[0]);if(!b)return null;let w=b.words[r[1]-1];if(!w||norm(w.f)!=norm(r[2]))w=b.words.find(v=>norm(v.f)==norm(r[2]));return w?{w,n:b.words.indexOf(w)+1,bk:b.name}:null}
+function renderResume(){const s=rawSess(),b=$("rsm");if(!b)return;if(!s){b.classList.add("hide");return}
+ $("rsmt").textContent="⏸ 中断した学習があります："+(s.pos+1)+"問目から（残り"+(s.q.length-s.pos)+"問／全"+s.q.length+"問"+(s.prac?"・練習モード":s.retry?"・復習":"")+"）\n※下の「スタート」で新しく始めると、この中断分は消えます。";
+ $("rsmt").style.whiteSpace="pre-line";b.classList.remove("hide")}
+$("rsb").onclick=()=>{const s=rawSess();if(!s)return;const q=[];let np=0;s.q.forEach((r,i)=>{const x=findW(r);if(x){if(i<s.pos)np++;q.push(x)}});
+ if(np>=q.length){try{localStorage.removeItem(SK)}catch(e){}renderResume();$("total").textContent="中断した学習の続きがありませんでした（単語が削除された可能性があります）。";return}
+ preSp=null;rev=!!s.rev;prac=!!s.prac;retry=!!s.retry;noRec=retry||prac;Q=q;pos=np;missed=(s.missed||[]).map(findW).filter(Boolean);
+ $("setup").classList.add("hide");$("result").classList.add("hide");$("quiz").classList.remove("hide");draw()};
+twice("rsd",()=>{try{localStorage.removeItem(SK)}catch(e){}renderResume()});
 load();all();
 </script></body></html>
