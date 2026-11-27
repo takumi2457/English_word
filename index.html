@@ -63,6 +63,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
    <label><input type="checkbox" id="only">まだ覚えていないものだけ</label>
    <label><input type="checkbox" id="rev">意味から出題</label>
    <label><input type="checkbox" id="auto" checked>英単語を自動で発音</label>
+   <label><input type="checkbox" id="pos" checked>品詞をカードに表示</label>
    <label><input type="checkbox" id="prac">練習モード（記録しない）</label>
   </div>
   <button class="pri" id="start" style="width:100%">スタート</button>
@@ -145,11 +146,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 <section id="p3" class="hide">
  <div class="box">
   <input type="text" id="ix" placeholder="英単語・意味で検索" autocomplete="off">
-  <div class="row" style="margin-top:10px">
-   <div><label>範囲</label><select id="ixs"></select></div>
+  <label style="margin-top:10px">範囲（複数選べます）</label>
+  <div id="ixs" class="chk" style="margin:0 0 6px"></div>
+  <button id="ixall" style="padding:4px 10px;font-size:13px;margin-bottom:10px">すべて選択／解除</button>
+  <div class="row">
    <div><label>並び順</label><select id="ixo"><option value="no">番号順</option><option value="abc">ABC順</option></select></div>
    <div><label>表示</label><select id="ixf"><option value="all">すべて</option><option value="ok">覚えた</option><option value="ng">まだ</option></select></div>
   </div>
+  <label style="display:flex;gap:6px;align-items:center;color:var(--tx);margin:12px 0 0;font-size:14px"><input type="checkbox" id="ixp" checked>品詞を表示</label>
   <div id="ixaz" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:12px"></div>
   <p class="mu" id="ixc" style="margin:10px 0 0"></p>
  </div>
@@ -381,19 +385,22 @@ function renderMissed(){const e=$("mlist");e.innerHTML="";if(!missed.length){e.c
   const c2=r.insertCell();c2.style.cssText="padding:8px 6px;vertical-align:top;white-space:pre-line;word-break:keep-all;overflow-wrap:anywhere;font-size:14px";c2.textContent=brk(w.b);
   const c3=r.insertCell();c3.style.cssText="padding:8px 0 8px 6px;vertical-align:top;width:1%";const b=document.createElement("button");b.textContent="🔊";b.style.padding="4px 10px";b.onclick=()=>sp(w);c3.append(b)});
  e.append(t)}
-let ixB=null,ixTm=null;
+let ixSel=null,ixTm=null;
 const ixKey=f=>String(f).toLowerCase().replace(/^[^a-z0-9]+/,"");
 const ixLetter=f=>{const c=ixKey(f).charAt(0);return/[a-z]/.test(c)?c.toUpperCase():"#"};
-function ixItems(){const q=$("ix").value.trim().toLowerCase(),f=$("ixf").value,bs=ixB===-1?books.map((b,i)=>i):[ixB];let a=[],total=0;
+function ixItems(){const q=$("ix").value.trim().toLowerCase(),f=$("ixf").value,bs=[...ixSel].filter(i=>books[i]).sort((a,b)=>a-b);let a=[],total=0;
  bs.forEach(bi=>books[bi].words.forEach((w,i)=>{total++;a.push({w,n:i+1,bk:books[bi].name,bi})}));
  if(q)a=a.filter(x=>String(x.w.f).toLowerCase().includes(q)||String(x.w.b).toLowerCase().includes(q));
  if(f=="ok")a=a.filter(x=>x.w.k);else if(f=="ng")a=a.filter(x=>!x.w.k);
  if($("ixo").value=="abc")a.sort((x,y)=>ixKey(x.w.f).localeCompare(ixKey(y.w.f),"en")||x.bi-y.bi||x.n-y.n);
  return{a,total}}
 function renderIndex(){const sb=$("ixs");
- if(sb.options.length!==books.length+1||[...sb.options].some((o,i)=>i>0&&o.textContent!==books[i-1].name)){sb.innerHTML="";const o0=document.createElement("option");o0.value=-1;o0.textContent="すべての単語帳";sb.append(o0);books.forEach((b,i)=>{const o=document.createElement("option");o.value=i;o.textContent=b.name;sb.append(o)})}
- if(ixB===null||(ixB!==-1&&!books[ixB]))ixB=cur;sb.value=ixB;
- const{a:items,total}=ixItems(),abc=$("ixo").value=="abc",allB=ixB===-1,t=$("ixt");t.innerHTML="";
+ ixSel=new Set([...(ixSel||[cur])].filter(i=>i<books.length));if(!ixSel.size)ixSel.add(cur<books.length?cur:0);
+ const sig=books.map(b=>b.name).join("\u0001");
+ if(sb.dataset.sig!==sig){sb.dataset.sig=sig;sb.innerHTML="";books.forEach((b,i)=>{const l=document.createElement("label"),c=document.createElement("input");c.type="checkbox";c.dataset.i=i;
+  c.onchange=()=>{if(c.checked)ixSel.add(i);else ixSel.delete(i);if(!ixSel.size){ixSel.add(i);c.checked=true}renderIndex()};l.append(c,b.name);sb.append(l)})}
+ sb.querySelectorAll("input").forEach(c=>{c.checked=ixSel.has(+c.dataset.i)});
+ const{a:items,total}=ixItems(),abc=$("ixo").value=="abc",allB=ixSel.size>1,t=$("ixt");t.innerHTML="";
  const first={};let lastBk=null,lastL=null;
  const hdr=txt=>{const r=t.insertRow(),c=r.insertCell();c.colSpan=5;c.style.cssText="background:var(--bg);font-weight:600;padding:4px 6px;color:var(--mu)";c.textContent=txt;return r};
  if(!items.length){const r=t.insertRow(),c=r.insertCell();c.colSpan=5;c.style.cssText="padding:14px;text-align:center;color:var(--mu)";c.textContent="該当する単語がありません"}
@@ -402,15 +409,15 @@ function renderIndex(){const sb=$("ixs");
   else if(allB&&x.bk!==lastBk){const h=hdr("📒 "+x.bk);lastBk=x.bk;if(!(L in first))first[L]=h}
   const r=t.insertRow();if(!(L in first))first[L]=r;
   const c0=r.insertCell();c0.className="n";c0.textContent=x.n;
-  const c1=r.insertCell();c1.style.cssText="word-break:normal;overflow-wrap:normal;padding-right:8px";const b=document.createElement("div");b.style.fontWeight="600";b.textContent=w.f;c1.append(b);
-  const sub=[ipaT(w.i),w.p,abc&&allB?x.bk:""].filter(Boolean).join(" ・ ");if(sub){const d=document.createElement("div");d.className="mu";d.style.fontSize="12px";d.textContent=sub;c1.append(d)}
+  const c1=r.insertCell();c1.style.cssText="word-break:normal;overflow-wrap:normal;padding-right:8px";const b=document.createElement("div");b.style.fontWeight="600";b.textContent=w.f;if($("ixp").checked&&w.p){const t=document.createElement("span");t.textContent=w.p;t.style.cssText="font-weight:400;font-size:11px;color:var(--mu);border:1px solid var(--bd);border-radius:999px;padding:0 7px;margin-left:6px;white-space:nowrap";b.append(t)}c1.append(b);
+  const sub=[ipaT(w.i),abc&&allB?x.bk:""].filter(Boolean).join(" ・ ");if(sub){const d=document.createElement("div");d.className="mu";d.style.fontSize="12px";d.textContent=sub;c1.append(d)}
   const c2=r.insertCell();c2.style.cssText="white-space:pre-line;word-break:keep-all;overflow-wrap:anywhere";c2.textContent=brk(w.b);
   const c3=r.insertCell();c3.className="k";c3.textContent=w.k?"✅":"";
   const c4=r.insertCell();c4.style.whiteSpace="nowrap";const sbn=document.createElement("button");sbn.textContent="🔊";sbn.style.padding="2px 8px";sbn.onclick=()=>sp(w);c4.append(sbn)});
  const az=$("ixaz");az.innerHTML="";for(const L of"ABCDEFGHIJKLMNOPQRSTUVWXYZ"){const b=document.createElement("button");b.textContent=L;b.style.cssText="padding:3px 0;font-size:12px;min-width:26px";b.disabled=!first[L];b.onclick=()=>{if(first[L])first[L].scrollIntoView({behavior:"smooth",block:"start"})};az.append(b)}
  $("ixc").textContent=items.length+"語"+(items.length!==total?"（全"+total+"語中）":"")+"　"+(abc?"ABC順で表示しています。":"番号順＝Excelの並び（単語帳に入っている順）です。")}
 $("ix").oninput=()=>{clearTimeout(ixTm);ixTm=setTimeout(renderIndex,120)};
-$("ixs").onchange=()=>{ixB=+$("ixs").value;renderIndex()};$("ixo").onchange=renderIndex;$("ixf").onchange=renderIndex;
+$("ixo").onchange=renderIndex;$("ixf").onchange=renderIndex;
 let vSig=null;
 function renderVoice(force){const e=$("vs");if(!e)return;const l=enVoices(),sig=l.map(v=>v.name).join("|");
  $("vcnt").textContent=l.length?"この端末で見つかった英語の音声："+l.length+"件":"英語の音声が見つかりません。端末の設定で音声をダウンロードしてから、「音声リストを更新」を押してください。";
@@ -447,9 +454,10 @@ function fitFs(t,cw){const avail=Math.max(120,(cw||300)-36),segs=String(t).split
 function face(){const x=Q[pos],w=x.w,c=$("card"),front=rev?w.b:w.f,back=rev?w.f:w.b,im=flipped!==rev,dt=String(flipped?back:front),sh=im?brk(dt):dt,fs=fitFs(sh,c.clientWidth);
  c.innerHTML="";c.style.position="relative";c.style.height="270px";c.style.padding="0";c.style.overflow="hidden";
  const m=document.createElement("div");m.style.cssText="position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%);max-height:120px;overflow:hidden;line-height:1.35;text-align:center;"+(im?"word-break:keep-all;overflow-wrap:anywhere;":"word-break:break-word;")+"white-space:pre-line;font-size:"+fs+"px";m.textContent=sh;c.append(m);
+ if($("pos").checked&&w.p){const t=document.createElement("div");t.textContent=w.p;t.style.cssText="position:absolute;left:12px;top:10px;font-size:12px;color:var(--mu);border:1px solid var(--bd);border-radius:999px;padding:0 9px;line-height:1.7";c.append(t)}
  if(flipped){const s=document.createElement("div");s.style.cssText="position:absolute;left:16px;right:16px;bottom:10px;max-height:90px;overflow:hidden;text-align:left";
   const add=(t,st)=>{if(!t)return;const d=document.createElement("div");d.textContent=t;d.style.cssText=st;d.style.whiteSpace="pre-line";s.append(d)};
-  add([ipaT(w.i),w.p,x.bk+" No."+x.n].filter(Boolean).join(" ・ "),"font-size:12px;color:var(--mu);text-align:center");
+  add([ipaT(w.i),x.bk+" No."+x.n].filter(Boolean).join(" ・ "),"font-size:12px;color:var(--mu);text-align:center");
   add(w.e,"font-size:14px;margin-top:4px");add(w.j,"font-size:12px;color:var(--mu);margin-top:2px");c.append(s)}
  autoSp()}
 let seen=false;
@@ -476,5 +484,11 @@ $("rsb").onclick=()=>{const s=rawSess();if(!s)return;const q=[];let np=0;s.q.for
  preSp=null;rev=!!s.rev;prac=!!s.prac;retry=!!s.retry;noRec=retry||prac;Q=q;pos=np;missed=(s.missed||[]).map(findW).filter(Boolean);
  $("setup").classList.add("hide");$("result").classList.add("hide");$("quiz").classList.remove("hide");draw()};
 twice("rsd",()=>{try{localStorage.removeItem(SK)}catch(e){}renderResume()});
+const UK="tangocho:ui";let UI={ixp:true,cp:true};try{Object.assign(UI,JSON.parse(localStorage.getItem(UK)||"{}"))}catch(e){}
+const saveUI=()=>{try{localStorage.setItem(UK,JSON.stringify(UI))}catch(e){}};
+$("ixp").checked=UI.ixp;$("pos").checked=UI.cp;
+$("ixp").onchange=()=>{UI.ixp=$("ixp").checked;saveUI();renderIndex()};
+$("pos").onchange=()=>{UI.cp=$("pos").checked;saveUI()};
+$("ixall").onclick=()=>{ixSel=ixSel&&ixSel.size===books.length?new Set([cur]):new Set(books.map((b,i)=>i));renderIndex()};
 load();all();
 </script></body></html>
